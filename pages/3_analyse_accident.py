@@ -154,19 +154,6 @@ st.subheader("🕒 Blessures par heure de la journée")
 heures = data["Heure_accident"].value_counts().sort_index()
 st.bar_chart(heures)
 
-# --- 3. Recherche par matricule ---
-st.subheader("🔍 Recherche par matricule")
-matricule_input = st.text_input("Entrez un numéro de matricule (ex: 38638):")
-
-if matricule_input:
-    resultat = data[data["Mat."] == str(matricule_input)][
-        ["Age", "Nature lésion", "Siège lésion", "CIS"]
-    ]
-    if not resultat.empty:
-        st.write("🎯 Résultat trouvé :")
-        st.dataframe(resultat)
-    else:
-        st.warning("Aucun résultat pour ce matricule.")
 
 # Chargement image
 data_img = os.path.abspath(
@@ -251,6 +238,7 @@ matricule_input_map = st.text_input(
 if matricule_input_map:
     blessure_agent = data[data["Mat."] == str(matricule_input_map)][
         [
+            "Age",
             "Siège normalisé",
             "Nature lésion",
             "Durée totale arrêt",
