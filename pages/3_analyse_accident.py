@@ -250,8 +250,14 @@ matricule_input_map = st.text_input(
 
 if matricule_input_map:
     blessure_agent = data[data["Mat."] == str(matricule_input_map)][
-        ["Siège normalisé", "Nature lésion"]
-    ].dropna()
+        [
+            "Siège normalisé",
+            "Nature lésion",
+            "Durée totale arrêt",
+            "Date début initial",
+            "Date fin initial",
+        ]
+    ].dropna(subset=["Siège normalisé"])
 
     if not blessure_agent.empty:
         st.write(f"🔎 Blessures relevées pour l'agent {matricule_input_map}:")
