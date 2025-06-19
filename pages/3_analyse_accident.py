@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import chardet
 import os
+import matplotlib.image as mpimg
 
 # Titre
 st.title("Analyse de l'accidentologie")
@@ -166,3 +167,103 @@ if matricule_input:
         st.dataframe(resultat)
     else:
         st.warning("Aucun résultat pour ce matricule.")
+
+# Chargement image
+data_img = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "human_map.png")
+)
+image = mpimg.imread(data_img)
+# 🧠 Mapping de normalisation des sièges
+normalisation_siege = {
+    "tête": "Tête",
+    "cervical": "Tête",
+    "crâne": "Tête",
+    "épaule gauche": "Épaule gauche",
+    "épaule droite": "Épaule droite",
+    "poignet gauche": "Poignet gauche",
+    "poignet droit": "Poignet droit",
+    "lombaire": "Dos",
+    "dorsale": "Dos",
+    "thorax": "Abdomen",
+    "abdomen": "Abdomen",
+    "membre inférieur gauche": "Genou gauche",
+    "membre inférieur droit": "Genou droit",
+    "cheville gauche": "Cheville gauche",
+    "cheville droite": "Cheville droite",
+    "main droite": "Poignet droit",
+    "main gauche": "Poignet gauche",
+    "bras gauche": "Épaule gauche",
+    "bras droit": "Épaule droite",
+}
+
+# Appliquer le mapping de simplification
+
+data["Siège lésion"] = data["Siège lésion"].astype(str).str.strip().str.lower()
+data["Siège normalisé"] = data["Siège lésion"].map(normalisation_siege)
+
+# Mapping des coordonnées
+siege_map = {
+    "Tête": (0.5, 0.10),
+    "Épaule gauche": (0.30, 0.22),
+    "Épaule droite": (0.70, 0.22),
+    "Poignet gauche": (0.18, 0.48),
+    "Poignet droit": (0.82, 0.48),
+    "Abdomen": (0.50, 0.35),
+    "Genou gauche": (0.42, 0.68),
+    "Genou droit": (0.58, 0.68),
+    "Cheville gauche": (0.44, 0.90),
+    "Cheville droite": (0.56, 0.90),
+    "Dos": (0.5, 0.27),
+}
+
+
+# Exemple de données
+# 🧍 Carte des blessures pour un agent
+st.subheader("🧍 Carte des blessures pour un agent")
+
+matricule_input_map = st.text_input(
+    "Entrez un matricule à afficher sur la carte (ex: 38638):", key="map"
+)
+
+if matricule_input_map:
+    blessure_agent = data[data["Mat."] == str(matricule_input_map)][
+        ["Siège normalisé", "Nature lésion"]
+    ].dropna()
+
+    if not blessure_agent.empty:
+        st.write(f"🔎 Blessures relevées pour l'agent {matricule_input_map}:")
+        st.dataframe(blessure_agent)
+
+        fig, ax = plt.subplots(figsize=(4, 7))
+        ax.imshow(image)
+        ax.axis("off")
+
+        for _, row in blessure_agent.iterrows():
+            siege = row["Siège normalisé"]
+            lesion = row["Nature lésion"]
+
+            if siege in siege_map:
+                x, y = siege_map[siege]
+                ax.plot(x * image.shape[1], y * image.shape[0], "ro", markersize=10)
+                ax.text(
+                    x * image.shape[1],
+                    y * image.shape[0] - 10,
+                    siege,
+                    color="white",
+                    fontsize=8,
+                    ha="center",
+                    va="center",
+                    bbox=dict(
+                        facecolor="black",
+                        edgecolor="none",
+                        alpha=0.6,
+                        boxstyle="round,pad=0.2",
+                    ),
+                )
+            else:
+                st.warning(f"❗️ Le siège « {siege} » n'est pas mappé.")
+
+        st.pyplot(fig)
+
+    else:
+        st.warning("Aucune blessure trouvée pour ce matricule.")
