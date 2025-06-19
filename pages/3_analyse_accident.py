@@ -45,7 +45,6 @@ st.dataframe(data.head())
 
 # Graphique: accidents par année
 st.subheader("Nombre d'accidents par année")
-st.subheader("Nombre d'accidents par année")
 fig1, ax1 = plt.subplots()
 data["Année"].value_counts().sort_index().plot(kind="bar", ax=ax1)
 ax1.set_title("Nombre d'accidents par année")
@@ -54,9 +53,6 @@ ax1.set_ylabel("Nombre d'accidents")
 ax1.grid(True)
 st.pyplot(fig1)
 
-
-# Graphique: accidents par jour de la semaine
-st.subheader("Nombre d'accidents par jour de la semaine")
 
 st.subheader("Nombre d'accidents par jour de la semaine")
 fig2, ax2 = plt.subplots()
