@@ -174,45 +174,68 @@ data_img = os.path.abspath(
 )
 image = mpimg.imread(data_img)
 # 🧠 Mapping de normalisation des sièges
-normalisation_siege = {
+mapping_siege_harmonisé = {
     "tête": "Tête",
-    "cervical": "Tête",
-    "crâne": "Tête",
-    "épaule gauche": "Épaule gauche",
-    "épaule droite": "Épaule droite",
-    "poignet gauche": "Poignet gauche",
-    "poignet droit": "Poignet droit",
+    "face (sauf nez et bouche)": "Tête",
+    "yeux": "Tête",
+    "nez": "Tête",
+    "bouche": "Tête",
+    "region cranienne": "Tête",
+    "epaule": "Épaule",
+    "bras": "Épaule",
+    "avant-bras": "Épaule",
+    "coude": "Épaule",
+    "poignet": "Poignet",
+    "main": "Poignet",
+    "paume et dos": "Poignet",
+    "pouce": "Poignet",
+    "index": "Poignet",
+    "majeur": "Poignet",
+    "annulaire": "Poignet",
+    "auriculaire": "Poignet",
+    "plusieurs doigts": "Poignet",
+    "pouce et index": "Poignet",
     "lombaire": "Dos",
+    "region lombaire": "Dos",
     "dorsale": "Dos",
+    "cervicale": "Dos",
     "thorax": "Abdomen",
     "abdomen": "Abdomen",
-    "membre inférieur gauche": "Genou gauche",
-    "membre inférieur droit": "Genou droit",
-    "cheville gauche": "Cheville gauche",
-    "cheville droite": "Cheville droite",
-    "main droite": "Poignet droit",
-    "main gauche": "Poignet gauche",
-    "bras gauche": "Épaule gauche",
-    "bras droit": "Épaule droite",
+    "genou": "Genou",
+    "cuisse": "Genou",
+    "jambe": "Genou",
+    "hanche": "Genou",
+    "cheville": "Cheville",
+    "cheville, cou de pied": "Cheville",
+    "plante et dessus": "Cheville",
+    "talon": "Cheville",
+    "orteils": "Cheville",
 }
 
-# Appliquer le mapping de simplification
 
+# Nettoyage
 data["Siège lésion"] = data["Siège lésion"].astype(str).str.strip().str.lower()
-data["Siège normalisé"] = data["Siège lésion"].map(normalisation_siege)
+
+# Création de la colonne normalisée
+data["Siège normalisé"] = data["Siège lésion"].map(mapping_siege_harmonisé)
+
 
 # Mapping des coordonnées
 siege_map = {
     "Tête": (0.5, 0.10),
     "Épaule gauche": (0.30, 0.22),
     "Épaule droite": (0.70, 0.22),
+    "Épaule": (0.50, 0.22),
     "Poignet gauche": (0.18, 0.48),
     "Poignet droit": (0.82, 0.48),
+    "Poignet": (0.50, 0.48),
     "Abdomen": (0.50, 0.35),
     "Genou gauche": (0.42, 0.68),
     "Genou droit": (0.58, 0.68),
+    "Genou": (0.50, 0.68),  # ajouté
     "Cheville gauche": (0.44, 0.90),
     "Cheville droite": (0.56, 0.90),
+    "Cheville": (0.50, 0.90),
     "Dos": (0.5, 0.27),
 }
 
