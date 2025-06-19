@@ -20,8 +20,8 @@ def load_data():
     encoding_detected = result["encoding"]
 
     # Lecture du fichier avec l'encodage détecté et le séparateur correct
-    df = pd.read_csv(data_path, sep=";", encoding=encoding_detected)
-    return df
+    data = pd.read_csv(data_path, sep=";", encoding=encoding_detected)
+    return data
 
 
 # Lecture des données
@@ -38,7 +38,9 @@ data["Mois"] = data["Date de l'accident"].dt.month
 data["Jour"] = data["Date de l'accident"].dt.day
 data["Jour_semaine"] = data["Date de l'accident"].dt.day_name()
 data["Durée totale arrêt"] = pd.to_numeric(data["Durée totale arrêt"], errors="coerce")
-
+data["Heure_accident"] = pd.to_datetime(
+    data["Heure de l'accident"], errors="coerce"
+).dt.hour
 # Affichage du tableau
 st.subheader("Aperçu des données")
 st.dataframe(data.head())
@@ -140,3 +142,27 @@ st.pyplot(fig6)
 # Statistiques durée arrêt
 st.subheader("Statistiques sur la durée totale d'arrêt")
 st.write(data["Durée totale arrêt"].describe())
+
+
+st.subheader("📊 Blessures par type de sport")
+sport_counts = data["Type de sport"].value_counts().dropna()
+st.bar_chart(sport_counts)
+
+# --- 2. Blessures par heure ---
+st.subheader("🕒 Blessures par heure de la journée")
+heures = data["Heure_accident"].value_counts().sort_index()
+st.bar_chart(heures)
+
+# --- 3. Recherche par matricule ---
+st.subheader("🔍 Recherche par matricule")
+matricule_input = st.text_input("Entrez un numéro de matricule (ex: 38638):")
+
+if matricule_input:
+    resultat = data[data["Mat."] == str(matricule_input)][
+        ["Age", "Nature lésion", "Siège lésion", "CIS"]
+    ]
+    if not resultat.empty:
+        st.write("🎯 Résultat trouvé :")
+        st.dataframe(resultat)
+    else:
+        st.warning("Aucun résultat pour ce matricule.")
