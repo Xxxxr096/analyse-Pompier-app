@@ -46,6 +46,42 @@ data["Heure_accident"] = pd.to_datetime(
 st.subheader("Aperçu des données")
 st.dataframe(data.head())
 
+# --- Classification des types de blessures ---
+# Dictionnaire de mapping vers catégories principales
+mapping_categories = {
+    "FRACTURE": "Osseuse",
+    "CONTUSION, HEMATOME": "Osseuse",
+    "ATTEINTE OSTEO-ARTICULAIRE ET/OU MUSCULAIRE (ENTORSE, DOULEURS D'EFFORT, ETC.)": "Ligamentaire",
+    "DECHIRURE MUSCULAIRE": "Musculaire",
+    "LUXATION": "Ligamentaire",
+    "DOULEURS,LUMBAGO": "Musculaire",
+    "HERNIE": "Musculaire",
+    "CHOC TRAUMATIQUE": "Osseuse",
+    "LESIONS INTERNES": "Osseuse",
+    "PLAIE": "Tendineuse",
+    "MORSURE": "Tendineuse",
+    "PIQURE": "Autres",
+    "BRULURE PHYSIQUE, CHIMIQUE": "Autres",
+    "PRESENCE DE CORPS ETRANGERS": "Autres",
+    "ELECTRISATION, ELECTROCUTION": "Autres",
+    "COMMOTION, PERTE DE CONNAISSANCE, MALAISE": "Autres",
+    "INTOXICATION PAR INGESTION, PAR INHALATION, PAR VOIE PERCUTANEE": "Autres",
+    "AUTRE NATURE DE LESION": "Autres",
+    "LESION POTENTIELLEMENT INFECTIEUSE DUE AU PRODUIT BIOLOGIQUE": "Autres",
+    "TROUBLES VISUELS": "Autres",
+    "CHOCS CONSECUTIFS A AGRESSION,MENACE": "Autres",
+    "REACTION ALLERGIQUE OU INFLAMMATOIRE CUTANEE OU MUQUEUSE": "Autres",
+    "TROUBLES AUDITIFS": "Autres",
+    "DERMITE": "Autres",
+    "LESIONS NERVEUSES": "Autres",
+    "LESIONS DE NATURE MULTIPLE": "Autres",
+}
+
+# Appliquer la classification
+data["Catégorie blessure"] = (
+    data["Nature lésion"].map(mapping_categories).fillna("Autres")
+)
+
 # Graphique: accidents par année
 st.subheader("Nombre d'accidents par année")
 fig1, ax1 = plt.subplots()
@@ -154,6 +190,16 @@ st.subheader("🕒 Blessures par heure de la journée")
 heures = data["Heure_accident"].value_counts().sort_index()
 st.bar_chart(heures)
 
+# --- Visualisation de la répartition des blessures par catégorie ---
+st.subheader("Répartition des blessures par catégorie")
+fig_cat, ax_cat = plt.subplots()
+data["Catégorie blessure"].value_counts().plot(kind="bar", ax=ax_cat)
+ax_cat.set_title("Blessures par catégorie (Musculaire, Osseuse, etc.)")
+ax_cat.set_xlabel("Catégorie")
+ax_cat.set_ylabel("Nombre de blessures")
+ax_cat.grid(True)
+st.pyplot(fig_cat)
+
 
 # Chargement image
 data_img = os.path.abspath(
@@ -230,33 +276,23 @@ data["Siège lésion"] = data["Siège lésion"].astype(str).str.strip().str.lowe
 data["Siège normalisé"] = data["Siège lésion"].map(mapping_siege_harmonisé)
 
 
-# Mapping des coordonnées
+# Remplace les lignes CENTRALES comme "Bras": (0.5, ...) par un des côtés (gauche)
 siege_map = {
     # Tête et cou
     "Tête": (0.5, 0.10),
     "Cou": (0.5, 0.15),
     # Épaules
-    "Épaule": (0.5, 0.22),
-    "Épaule gauche": (0.30, 0.22),
-    "Épaule droite": (0.70, 0.22),
+    "Épaule": (0.30, 0.22),  # 👈 Gauche
     # Bras
-    "Bras": (0.5, 0.30),
+    "Bras": (0.30, 0.30),  # 👈 Gauche
     # Avant-bras
-    "Avant-bras": (0.5, 0.38),
-    "Avant-bras gauche": (0.30, 0.40),
-    "Avant-bras droit": (0.70, 0.40),
+    "Avant-bras": (0.30, 0.40),  # 👈 Gauche
     # Coudes
-    "Coude": (0.5, 0.42),
-    "Coude gauche": (0.28, 0.45),
-    "Coude droit": (0.72, 0.45),
+    "Coude": (0.28, 0.45),  # 👈 Gauche
     # Poignets
-    "Poignet": (0.5, 0.48),
-    "Poignet gauche": (0.20, 0.52),
-    "Poignet droit": (0.80, 0.52),
+    "Poignet": (0.20, 0.52),  # 👈 Gauche
     # Mains
-    "Main": (0.5, 0.53),
-    "Main gauche": (0.15, 0.58),
-    "Main droite": (0.85, 0.58),
+    "Main": (0.15, 0.58),  # 👈 Gauche
     # Tronc / Dos
     "Tronc": (0.5, 0.35),
     "Dos": (0.5, 0.27),
@@ -266,15 +302,11 @@ siege_map = {
     # Cuisses
     "Cuisse": (0.5, 0.65),
     # Genoux
-    "Genou": (0.5, 0.73),
-    "Genou gauche": (0.42, 0.73),
-    "Genou droit": (0.58, 0.73),
+    "Genou": (0.42, 0.73),  # 👈 Gauche
     # Jambes
     "Jambe": (0.5, 0.80),
     # Chevilles
-    "Cheville": (0.5, 0.90),
-    "Cheville gauche": (0.44, 0.90),
-    "Cheville droite": (0.56, 0.90),
+    "Cheville": (0.44, 0.90),  # 👈 Gauche
     # Pieds
     "Pied": (0.5, 0.95),
     # Siège non précisé
@@ -326,7 +358,24 @@ if matricule_input_map:
             lesion = row["Nature lésion"]
 
             # Forcer côté gauche si siège non latéralisé
-            siege = lateralisation_par_defaut.get(siege_base, siege_base)
+            # Fusionner vers zone centrale
+            fusion_zones = {
+                "Épaule gauche": "Épaule",
+                "Épaule droite": "Épaule",
+                "Avant-bras gauche": "Avant-bras",
+                "Avant-bras droit": "Avant-bras",
+                "Coude gauche": "Coude",
+                "Coude droit": "Coude",
+                "Poignet gauche": "Poignet",
+                "Poignet droit": "Poignet",
+                "Main gauche": "Main",
+                "Main droite": "Main",
+                "Genou gauche": "Genou",
+                "Genou droit": "Genou",
+                "Cheville gauche": "Cheville",
+                "Cheville droite": "Cheville",
+            }
+            siege = fusion_zones.get(siege_base, siege_base)
 
             if siege in siege_map:
                 x, y = siege_map[siege]
@@ -350,3 +399,100 @@ if matricule_input_map:
                 st.warning(f"❗️ Le siège « {siege_base} » n'est pas mappé.")
 
         st.pyplot(fig)
+
+
+# Application de la latéralisation
+def appliquer_lateralisation(row):
+    siege = row["Siège normalisé"]
+    cote = row["Latéralité de la blessure"]
+
+    if cote == "Droite" and f"{siege} droit" in siege_map:
+        return f"{siege} droit"
+    elif cote == "Gauche" and f"{siege} gauche" in siege_map:
+        return f"{siege} gauche"
+    else:
+        return siege  # central ou sans objet
+
+
+# Création directe dans le dataframe principal
+data["Siège latéralisé"] = data.apply(appliquer_lateralisation, axis=1)
+
+# Puis on filtre les valides
+data_valides = data.dropna(subset=["Siège latéralisé"])
+
+
+# --- 🧍‍♂️ Carte globale : blessure par zone avec % ---
+# --- 🧍‍♂️ Carte globale : blessure par zone avec % ---
+st.subheader("🧍‍♂️ Carte globale des blessures par zone (tous les agents)")
+
+# Filtrer les données valides
+data_valides = data.dropna(subset=["Siège normalisé"])
+total_blessures = len(data_valides)
+
+# Fusionner les zones gauche/droite en une seule zone centrale
+fusion_zones = {
+    "Épaule gauche": "Épaule",
+    "Épaule droite": "Épaule",
+    "Avant-bras gauche": "Avant-bras",
+    "Avant-bras droit": "Avant-bras",
+    "Coude gauche": "Coude",
+    "Coude droit": "Coude",
+    "Poignet gauche": "Poignet",
+    "Poignet droit": "Poignet",
+    "Main gauche": "Main",
+    "Main droite": "Main",
+    "Genou gauche": "Genou",
+    "Genou droit": "Genou",
+    "Cheville gauche": "Cheville",
+    "Cheville droite": "Cheville",
+}
+
+# Appliquer le regroupement
+data_valides["Zone fusionnée"] = data_valides["Siège latéralisé"].replace(fusion_zones)
+
+# Compter les blessures par zone
+compte_zones = data_valides["Zone fusionnée"].value_counts()
+
+
+# Créer l’image
+fig_global, ax_global = plt.subplots(figsize=(5, 9))
+ax_global.imshow(image)
+ax_global.axis("off")
+
+# Affichage des points + texte avec nom + %
+for siege, count in compte_zones.items():
+    if siege in siege_map:
+        x, y = siege_map[siege]
+        pourcentage = count / total_blessures * 100
+
+        # Point rouge
+        ax_global.plot(
+            x * image.shape[1],
+            y * image.shape[0],
+            "ro",
+            markersize=5 + (pourcentage * 0.3),
+        )
+
+        # Texte avec nom + %
+        # Texte avec nom + %
+        ax_global.text(
+            x * image.shape[1],
+            y * image.shape[0] - 10,
+            f"{siege.title()}\n{pourcentage:.1f}%",
+            color="white",
+            fontsize=6,  # 🔽 police plus petite
+            ha="center",
+            va="center",
+            bbox=dict(
+                facecolor="black",
+                alpha=0.7,
+                edgecolor="none",
+                boxstyle="round,pad=0.1",  # 🔽 encadré plus serré
+            ),
+        )
+
+    else:
+        st.warning(f"Zone non trouvée sur la carte : {siege}")
+
+# Affichage Streamlit
+st.pyplot(fig_global)
