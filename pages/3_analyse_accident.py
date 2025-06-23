@@ -162,41 +162,64 @@ data_img = os.path.abspath(
 image = mpimg.imread(data_img)
 # 🧠 Mapping de normalisation des sièges
 mapping_siege_harmonisé = {
+    # Tête et visage
     "tête": "Tête",
     "face (sauf nez et bouche)": "Tête",
     "yeux": "Tête",
     "nez": "Tête",
     "bouche": "Tête",
     "region cranienne": "Tête",
+    "appareil auditif": "Tête",
+    # Cou
+    "cervicale": "Cou",
+    "cou (sauf vertebres cervicales)": "Cou",
+    # Haut du corps
     "epaule": "Épaule",
-    "bras": "Épaule",
-    "avant-bras": "Épaule",
-    "coude": "Épaule",
+    "bras": "Bras",
+    "avant-bras": "Avant-bras",
+    "coude": "Coude",
+    # Mains et poignets
     "poignet": "Poignet",
     "main": "Poignet",
     "paume et dos": "Poignet",
-    "pouce": "Poignet",
-    "index": "Poignet",
-    "majeur": "Poignet",
-    "annulaire": "Poignet",
-    "auriculaire": "Poignet",
-    "plusieurs doigts": "Poignet",
-    "pouce et index": "Poignet",
+    "pouce": "Main",
+    "index": "Main",
+    "majeur": "Main",
+    "annulaire": "Main",
+    "auriculaire": "Main",
+    "plusieurs doigts": "Main",
+    "autre doigt": "Main",
+    "pouce et index": "Main",
+    # Dos
     "lombaire": "Dos",
     "region lombaire": "Dos",
     "dorsale": "Dos",
-    "cervicale": "Dos",
-    "thorax": "Abdomen",
-    "abdomen": "Abdomen",
+    # Tronc
+    "thorax": "Tronc",
+    "abdomen": "Tronc",
+    # Membres inférieurs
+    "hanche": "Hanche",
+    "cuisse": "Cuisse",
     "genou": "Genou",
-    "cuisse": "Genou",
-    "jambe": "Genou",
-    "hanche": "Genou",
+    "jambe": "Jambe",
+    # Pieds et chevilles
     "cheville": "Cheville",
     "cheville, cou de pied": "Cheville",
-    "plante et dessus": "Cheville",
-    "talon": "Cheville",
-    "orteils": "Cheville",
+    "plante et dessus": "Pied",
+    "talon": "Pied",
+    "orteils": "Pied",
+    # Organes internes
+    "organes genitaux": "Organes internes",
+    "siege interne non precise": "Organes internes",
+    # Non précisé
+    "localisation multiple non precise": "Non précisé",
+    "non precise": "Non précisé",
+    "non precise - colonne vertebrale": "Dos",
+    "non precise - mains": "Main",
+    "non precise - membres inferieurs ( pieds exceptes)": "Jambe",
+    "non precise - membres superieurs": "Bras",
+    "non precise - pieds": "Pied",
+    "non precise - tete (yeux exceptes)": "Tête",
 }
 
 
@@ -209,21 +232,53 @@ data["Siège normalisé"] = data["Siège lésion"].map(mapping_siege_harmonisé)
 
 # Mapping des coordonnées
 siege_map = {
+    # Tête et cou
     "Tête": (0.5, 0.10),
+    "Cou": (0.5, 0.15),
+    # Épaules
+    "Épaule": (0.5, 0.22),
     "Épaule gauche": (0.30, 0.22),
     "Épaule droite": (0.70, 0.22),
-    "Épaule": (0.50, 0.22),
-    "Poignet gauche": (0.18, 0.48),
-    "Poignet droit": (0.82, 0.48),
-    "Poignet": (0.50, 0.48),
-    "Abdomen": (0.50, 0.35),
-    "Genou gauche": (0.42, 0.68),
-    "Genou droit": (0.58, 0.68),
-    "Genou": (0.50, 0.68),  # ajouté
+    # Bras
+    "Bras": (0.5, 0.30),
+    # Avant-bras
+    "Avant-bras": (0.5, 0.38),
+    "Avant-bras gauche": (0.30, 0.40),
+    "Avant-bras droit": (0.70, 0.40),
+    # Coudes
+    "Coude": (0.5, 0.42),
+    "Coude gauche": (0.28, 0.45),
+    "Coude droit": (0.72, 0.45),
+    # Poignets
+    "Poignet": (0.5, 0.48),
+    "Poignet gauche": (0.20, 0.52),
+    "Poignet droit": (0.80, 0.52),
+    # Mains
+    "Main": (0.5, 0.53),
+    "Main gauche": (0.15, 0.58),
+    "Main droite": (0.85, 0.58),
+    # Tronc / Dos
+    "Tronc": (0.5, 0.35),
+    "Dos": (0.5, 0.27),
+    "Organes internes": (0.5, 0.33),
+    # Hanche
+    "Hanche": (0.5, 0.58),
+    # Cuisses
+    "Cuisse": (0.5, 0.65),
+    # Genoux
+    "Genou": (0.5, 0.73),
+    "Genou gauche": (0.42, 0.73),
+    "Genou droit": (0.58, 0.73),
+    # Jambes
+    "Jambe": (0.5, 0.80),
+    # Chevilles
+    "Cheville": (0.5, 0.90),
     "Cheville gauche": (0.44, 0.90),
     "Cheville droite": (0.56, 0.90),
-    "Cheville": (0.50, 0.90),
-    "Dos": (0.5, 0.27),
+    # Pieds
+    "Pied": (0.5, 0.95),
+    # Siège non précisé
+    "Non précisé": (0.5, 0.5),
 }
 
 
@@ -255,9 +310,23 @@ if matricule_input_map:
         ax.imshow(image)
         ax.axis("off")
 
+        # Sièges par défaut (non précisés) → rediriger vers un seul côté (gauche ici)
+        lateralisation_par_defaut = {
+            "Avant-bras": "Avant-bras gauche",
+            "Poignet": "Poignet gauche",
+            "Main": "Main gauche",
+            "Coude": "Coude gauche",
+            "Épaule": "Épaule gauche",
+            "Genou": "Genou gauche",
+            "Cheville": "Cheville gauche",
+        }
+
         for _, row in blessure_agent.iterrows():
-            siege = row["Siège normalisé"]
+            siege_base = row["Siège normalisé"]
             lesion = row["Nature lésion"]
+
+            # Forcer côté gauche si siège non latéralisé
+            siege = lateralisation_par_defaut.get(siege_base, siege_base)
 
             if siege in siege_map:
                 x, y = siege_map[siege]
@@ -265,7 +334,7 @@ if matricule_input_map:
                 ax.text(
                     x * image.shape[1],
                     y * image.shape[0] - 10,
-                    siege,
+                    siege_base,  # Affiche le texte d'origine (pas le siège redirigé)
                     color="white",
                     fontsize=8,
                     ha="center",
@@ -278,9 +347,6 @@ if matricule_input_map:
                     ),
                 )
             else:
-                st.warning(f"❗️ Le siège « {siege} » n'est pas mappé.")
+                st.warning(f"❗️ Le siège « {siege_base} » n'est pas mappé.")
 
         st.pyplot(fig)
-
-    else:
-        st.warning("Aucune blessure trouvée pour ce matricule.")
