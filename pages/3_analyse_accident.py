@@ -496,3 +496,40 @@ for siege, count in compte_zones.items():
 
 # Affichage Streamlit
 st.pyplot(fig_global)
+
+# --- 📈 Graphique : Nombre de blessures par zone du corps ---
+st.subheader("📈 Nombre de blessures par zone du corps")
+
+# Appliquer le regroupement gauche/droite
+fusion_zones = {
+    "Épaule gauche": "Épaule",
+    "Épaule droite": "Épaule",
+    "Avant-bras gauche": "Avant-bras",
+    "Avant-bras droit": "Avant-bras",
+    "Coude gauche": "Coude",
+    "Coude droit": "Coude",
+    "Poignet gauche": "Poignet",
+    "Poignet droit": "Poignet",
+    "Main gauche": "Main",
+    "Main droite": "Main",
+    "Genou gauche": "Genou",
+    "Genou droit": "Genou",
+    "Cheville gauche": "Cheville",
+    "Cheville droite": "Cheville",
+}
+
+# On remplace les zones latéralisées par une version fusionnée
+data["Zone fusionnée"] = data["Siège latéralisé"].replace(fusion_zones)
+
+# Compter les occurrences par zone fusionnée
+zone_counts = data["Zone fusionnée"].value_counts()
+
+# Tracer
+fig_zone, ax_zone = plt.subplots(figsize=(8, 5))
+zone_counts.plot(kind="bar", ax=ax_zone)
+ax_zone.set_title("Nombre de blessures par zone du corps")
+ax_zone.set_xlabel("Zone du corps")
+ax_zone.set_ylabel("Nombre de blessures")
+ax_zone.grid(True)
+fig_zone.tight_layout()
+st.pyplot(fig_zone)
