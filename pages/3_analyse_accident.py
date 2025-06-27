@@ -497,39 +497,90 @@ for siege, count in compte_zones.items():
 # Affichage Streamlit
 st.pyplot(fig_global)
 
-# --- 📈 Graphique : Nombre de blessures par zone du corps ---
-st.subheader("📈 Nombre de blessures par zone du corps")
+# --- 📌 Carte des blessures par territoire (compagnie) ---
+st.subheader("🗺️ Carte des blessures par territoire (compagnie)")
 
-# Appliquer le regroupement gauche/droite
-fusion_zones = {
-    "Épaule gauche": "Épaule",
-    "Épaule droite": "Épaule",
-    "Avant-bras gauche": "Avant-bras",
-    "Avant-bras droit": "Avant-bras",
-    "Coude gauche": "Coude",
-    "Coude droit": "Coude",
-    "Poignet gauche": "Poignet",
-    "Poignet droit": "Poignet",
-    "Main gauche": "Main",
-    "Main droite": "Main",
-    "Genou gauche": "Genou",
-    "Genou droit": "Genou",
-    "Cheville gauche": "Cheville",
-    "Cheville droite": "Cheville",
+# --- Charger l'image ---
+territoire_img_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "carte_j.jpeg")
+)
+territoire_img = mpimg.imread(territoire_img_path)
+
+# --- Coordonnées des compagnies sur l'image (x, y normalisés) ---
+coordonnees_territoires = {
+    "Compagnie de Haguenau": (0.6729, 0.3587),
+    "Compagnie de Saverne": (0.12, 0.20),
+    "Compagnie de Molsheim": (0.4808, 0.6028),
+    "Compagnie de Sélestat": (0.4213, 0.8362),
+    "Compagnie de l'EMS Nord": (0.6721, 0.5454),
+    "Compagnie de l'EMS Centre": (0.6614, 0.5708),
+    "Compagnie de l'EMS Sud": (0.6813, 0.6087),
 }
 
-# On remplace les zones latéralisées par une version fusionnée
-data["Zone fusionnée"] = data["Siège latéralisé"].replace(fusion_zones)
 
-# Compter les occurrences par zone fusionnée
-zone_counts = data["Zone fusionnée"].value_counts()
+# --- Mapping des services vers compagnies (à partir du CSV brut) ---
+mapping_services = {
+    "Cie Haguenau": "Compagnie de Haguenau",
+    "Cie Saverne": "Compagnie de Saverne",
+    "Cie Molsheim": "Compagnie de Molsheim",
+    "Cie Sélestat": "Compagnie de Sélestat",
+    "Cie Selestat": "Compagnie de Sélestat",  # pour robustesse
+    "Cie EMS Nord": "Compagnie de l'EMS Nord",
+    "Cie EMS Centre": "Compagnie de l'EMS Centre",
+    "Cie EMS Sud": "Compagnie de l'EMS Sud",
+}
 
-# Tracer
-fig_zone, ax_zone = plt.subplots(figsize=(8, 5))
-zone_counts.plot(kind="bar", ax=ax_zone)
-ax_zone.set_title("Nombre de blessures par zone du corps")
-ax_zone.set_xlabel("Zone du corps")
-ax_zone.set_ylabel("Nombre de blessures")
-ax_zone.grid(True)
-fig_zone.tight_layout()
-st.pyplot(fig_zone)
+# --- Nettoyage de la colonne "Service" et application du mapping ---
+data["Service"] = data["Service"].astype(str).str.strip()
+data["Service normalisé"] = data["Service"].replace(mapping_services)
+
+# --- Garder uniquement les services mappés dans notre carte ---
+data_territoires = data[data["Service normalisé"].isin(coordonnees_territoires.keys())]
+
+# --- Calcul du total et des comptages ---
+total_blessures = len(data_territoires)
+blessures_par_territoire = data_territoires["Service normalisé"].value_counts()
+
+# --- Affichage sur la carte ---
+fig_territoire, ax = plt.subplots(figsize=(8, 10))
+ax.imshow(territoire_img)
+ax.axis("off")
+
+for territoire, (x, y) in coordonnees_territoires.items():
+    count = blessures_par_territoire.get(territoire, 0)
+    pourcentage = (count / total_blessures * 100) if total_blessures > 0 else 0
+
+    # Point rouge
+    ax.plot(
+        x * territoire_img.shape[1],
+        y * territoire_img.shape[0],
+        "ro",
+        markersize=6 + pourcentage * 0.2,
+    )
+
+    # Étiquette avec % et nom court
+    ax.text(
+        x * territoire_img.shape[1],
+        y * territoire_img.shape[0] - 10,
+        f"{territoire.split()[-1]}\n{pourcentage:.1f}%",
+        color="white",
+        fontsize=8,
+        ha="center",
+        bbox=dict(
+            facecolor="black",
+            alpha=0.7,
+            edgecolor="none",
+            boxstyle="round,pad=0.2",
+        ),
+    )
+
+st.pyplot(fig_territoire)
+
+# --- Optionnel : liste des services non mappés pour contrôle ---
+services_observés = set(data["Service"].dropna().unique())
+services_connus = set(mapping_services.keys())
+non_mappés = services_observés - services_connus
+
+if non_mappés:
+    st.warning("⚠️ Services non reconnus (à mapper si besoin) :")
+    st.write(sorted(non_mappés))
