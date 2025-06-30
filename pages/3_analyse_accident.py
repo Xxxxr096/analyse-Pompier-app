@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import chardet
 import os
 import matplotlib.image as mpimg
+from PIL import Image
+import numpy as np
 
 # Titre
 st.title("Analyse de l'accidentologie")
@@ -45,6 +47,156 @@ data["Heure_accident"] = pd.to_datetime(
 # Affichage du tableau
 st.subheader("Aperçu des données")
 st.dataframe(data.head())
+
+# -- Ajout de colonnes utiles pour les filtres --
+data["Date de l'accident"] = pd.to_datetime(
+    data["Date de l'accident"], errors="coerce", dayfirst=True
+)
+data["Année"] = data["Date de l'accident"].dt.year
+
+
+cis_compagnie_mapping = {
+    # Compagnie de Haguenau
+    "HAGUENAU": "Compagnie de Haguenau",
+    "BISCHWILLER": "Compagnie de Haguenau",
+    "BRUMATH": "Compagnie de Haguenau",
+    "DRUSENHEIM": "Compagnie de Haguenau",
+    "GAMBSHEIM": "Compagnie de Haguenau",
+    "GRIES": "Compagnie de Haguenau",
+    "HOCHFELDEN": "Compagnie de Haguenau",
+    "MERTZWILLER": "Compagnie de Haguenau",
+    "REICHSHOFFEN": "Compagnie de Haguenau",
+    "SOUFFLENHEIM": "Compagnie de Haguenau",
+    "VAL DE MODER": "Compagnie de Haguenau",
+    "WEITBRUCH": "Compagnie de Haguenau",
+    "WOERTH": "Compagnie de Haguenau",
+    "ROHRWILLER": "Compagnie de Haguenau",
+    "ROESCHWOOG": "Compagnie de Haguenau",
+    "OBERHOFFEN SUR MODER": "Compagnie de Haguenau",
+    "DURRENBACH": "Compagnie de Haguenau",
+    "BETSCHDORF": "Compagnie de Haguenau",
+    "RITTERSHOFFEN": "Compagnie de Haguenau",
+    "WEYERSHEIM": "Compagnie de Haguenau",
+    "HATTEN": "Compagnie de Haguenau",
+    "SALMBACH": "Compagnie de Haguenau",
+    "LOBSANN": "Compagnie de Haguenau",
+    "WINTERSHOUSE": "Compagnie de Haguenau",
+    "DURRENBACH-WALBOURG": "Compagnie de Haguenau",
+    # Compagnie de Saverne
+    "SAVERNE": "Compagnie de Saverne",
+    "DRULINGEN": "Compagnie de Saverne",
+    "INGWILLER": "Compagnie de Saverne",
+    "DOSSENHEIM S/ZINSEL": "Compagnie de Saverne",
+    "MONSWILLER": "Compagnie de Saverne",
+    "WIMMENAU": "Compagnie de Saverne",
+    "RAUWILLER": "Compagnie de Saverne",
+    "VOLKSBERG": "Compagnie de Saverne",
+    "PETERSBACH": "Compagnie de Saverne",
+    "WEISLINGEN": "Compagnie de Saverne",
+    "NIEDERBRONN LES BAIN": "Compagnie de Saverne",
+    "WINGEN SUR MODER": "Compagnie de Saverne",
+    # Compagnie de Molsheim
+    "MOLSHEIM": "Compagnie de Molsheim",
+    "MUTZIG": "Compagnie de Molsheim",
+    "WASSELONNE": "Compagnie de Molsheim",
+    "ROSHEIM": "Compagnie de Molsheim",
+    "WESTHOFFEN": "Compagnie de Molsheim",
+    "BERGBIETEN": "Compagnie de Molsheim",
+    "BARR": "Compagnie de Molsheim",
+    "ERNOLSHEIM S.BRUCHE": "Compagnie de Molsheim",
+    "STILL": "Compagnie de Molsheim",
+    "WOLFISHEIM": "Compagnie de Molsheim",
+    "ERGERSHEIM": "Compagnie de Molsheim",
+    "ALTECKENDORF": "Compagnie de Molsheim",
+    "SCHNERSHEIM": "Compagnie de Molsheim",
+    "BOERSCH": "Compagnie de Molsheim",
+    # Compagnie de Sélestat
+    "SELESTAT": "Compagnie de Sélestat",
+    "MUSSIG": "Compagnie de Sélestat",
+    "BALDENHEIM": "Compagnie de Sélestat",
+    "EBERSHEIM": "Compagnie de Sélestat",
+    "EBERSMUNSTER": "Compagnie de Sélestat",
+    "MUTTERSHOLTZ": "Compagnie de Sélestat",
+    "MARCKOLSHEIM": "Compagnie de Sélestat",
+    "SUNDHOUSE": "Compagnie de Sélestat",
+    "RHINAU": "Compagnie de Sélestat",
+    "HILSENHEIM": "Compagnie de Sélestat",
+    "OHNENHEIM": "Compagnie de Sélestat",
+    "DAMBACH-LA-VILLE": "Compagnie de Sélestat",
+    "BINDERNHEIM": "Compagnie de Sélestat",
+    # Compagnie de l'EMS Nord
+    "STRASBOURG NORD": "Compagnie de l'EMS Nord",
+    "BISCHHEIM": "Compagnie de l'EMS Nord",
+    "HOENHEIM": "Compagnie de l'EMS Nord",
+    "MITTELHAUSBERGEN": "Compagnie de l'EMS Nord",
+    "MUNDOLSHEIM": "Compagnie de l'EMS Nord",
+    "GRIESHEIM-SUR-SOUFFE": "Compagnie de l'EMS Nord",
+    "TRUCHTERSHEIM": "Compagnie de l'EMS Nord",
+    "LA SOUFFEL": "Compagnie de l'EMS Nord",
+    # Compagnie de l'EMS Centre
+    "STRASBOURG OUEST": "Compagnie de l'EMS Centre",
+    "STRASBOURG FINK": "Compagnie de l'EMS Centre",
+    "OSTWALD": "Compagnie de l'EMS Centre",
+    "LINGOLSHEIM": "Compagnie de l'EMS Centre",
+    "ILLKIRCH-GRAFFENSTAD": "Compagnie de l'EMS Centre",
+    "VILLE": "Compagnie de l'EMS Centre",
+    "FINKWILLER": "Compagnie de l'EMS Centre",
+    # Compagnie de l'EMS Sud
+    "STRASBOURG SUD": "Compagnie de l'EMS Sud",
+    "FEGERSHEIM": "Compagnie de l'EMS Sud",
+    "LIPSHEIM": "Compagnie de l'EMS Sud",
+    "NORDHOUSE": "Compagnie de l'EMS Sud",
+    "GEISPOLSHEIM": "Compagnie de l'EMS Sud",
+    "FEGERSHEIM-ESCHAU": "Compagnie de l'EMS Sud",
+    # Cas spéciaux ou libellés centralisés
+    "CIE HAGUENAU": "Compagnie de Haguenau",
+    "CIE SAVERNE": "Compagnie de Saverne",
+    "CIE MOLSHEIM": "Compagnie de Molsheim",
+    "CIE SELESTAT": "Compagnie de Sélestat",
+    "CIE EMS NORD": "Compagnie de l'EMS Nord",
+    "CIE EMS CENTRE": "Compagnie de l'EMS Centre",
+    "CIE EMS SUD": "Compagnie de l'EMS Sud",
+}
+# Appliquer le mapping CIS > compagnie
+data["CIS"] = data["CIS"].astype(str).str.strip().str.upper()
+data["CIS normalisé"] = data["CIS"].map(cis_compagnie_mapping)
+
+# -- Filtres Streamlit --
+st.sidebar.header("Filtres")
+
+# Filtre : Statut (SPP / SPV)
+statuts = st.sidebar.multiselect(
+    "Statut", options=sorted(data["Statut"].dropna().unique()), default=None
+)
+
+# Filtre : Année
+annees = st.sidebar.multiselect(
+    "Année", options=sorted(data["Année"].dropna().unique()), default=None
+)
+
+# Filtre : Nature de l'accident
+natures = st.sidebar.multiselect(
+    "Nature de l'accident",
+    options=sorted(data["Nature de l'accident"].dropna().unique()),
+    default=None,
+)
+
+# Filtre : Compagnie
+compagnies = st.sidebar.multiselect(
+    "Compagnie (territoire)",
+    options=sorted(data["CIS normalisé"].dropna().unique()),
+    default=None,
+)
+
+# Appliquer les filtres
+if statuts:
+    data = data[data["Statut"].isin(statuts)]
+if annees:
+    data = data[data["Année"].isin(annees)]
+if natures:
+    data = data[data["Nature de l'accident"].isin(natures)]
+if compagnies:
+    data = data[data["CIS normalisé"].isin(compagnies)]
 
 # --- Classification des types de blessures ---
 # Dictionnaire de mapping vers catégories principales
@@ -498,74 +650,185 @@ for siege, count in compte_zones.items():
 st.pyplot(fig_global)
 
 # --- 📌 Carte des blessures par territoire (compagnie) ---
-st.subheader("🗺️ Carte des blessures par territoire (compagnie)")
+# --- 📌 Carte des blessures par territoire (compagnie) ---
 
-# --- Charger l'image ---
-territoire_img_path = os.path.abspath(
+
+# --- Mapping CIS vers Compagnie ---
+
+
+# --- Nettoyage et normalisation ---
+data["CIS"] = data["CIS"].astype(str).str.strip().str.upper()
+data["CIS normalisé"] = data["CIS"].map(cis_compagnie_mapping)
+
+
+# Recalculer les blessures par CIS filtré
+blessures_par_cis = data["CIS"].value_counts()
+total_blessures = blessures_par_cis.sum()
+
+# Ratios dynamiques selon les filtres
+ratios_blessures = {
+    cis: (nb / total_blessures * 100 if total_blessures > 0 else 0)
+    for cis, nb in blessures_par_cis.items()
+}
+
+
+coordonnees_territoires = {
+    "ALTECKENDORF": (0.5168, 0.4031),
+    "BALDENHEIM": (0.5106, 0.8452),
+    "BARR": (0.4351, 0.7152),
+    "BERGBIETEN": (0.4234, 0.5795),
+    "BETSCHDORF": (0.7433, 0.3089),
+    "BISCHHEIM": (0.6354, 0.5411),
+    "BISCHWILLER": (0.7073, 0.4134),
+    "BRUMATH": (0.6078, 0.4458),
+    "DAMBACH-LA-VILLE": (0.4170, 0.7821),
+    "DOSSENHEIM S/ZINSEL": (0.3346, 0.3912),
+    "DRULINGEN": (0.2038, 0.3511),
+    "DRUSENHEIM": (0.7816, 0.4182),
+    "DURRENBACH": (0.6354, 0.3111),
+    "EBERSHEIM": (0.4744, 0.7963),
+    "EBERSMUNSTER": (0.5010, 0.8008),
+    "ERGERSHEIM": (0.4862, 0.5762),
+    "FEGERSHEIM": (0.6132, 0.6423),
+    "FINKWILLER": (0.6446, 0.5725),
+    "GAMBSHEIM": (0.7456, 0.4707),
+    "GEISPOLSHEIM": (0.5719, 0.6233),
+    "GRIES": (0.6828, 0.4285),
+    "GRIESHEIM-SUR-SOUFFE": (0.6293, 0.6239),
+    "HAGUENAU": (0.6522, 0.3755),
+    "HATTEN": (0.8183, 0.3100),
+    "HILSENHEIM": (0.5297, 0.8061),
+    "HOCHFELDEN": (0.4984, 0.4301),
+    "HOENHEIM": (0.6530, 0.5275),
+    "ILLKIRCH-GRAFFENSTAD": (0.6308, 0.6260),
+    "INGWILLER": (0.4266, 0.3439),
+    "LA SOUFFEL": (0.6105, 0.5325),
+    "LINGOLSHEIM": (0.5956, 0.5892),
+    "LIPSHEIM": (0.5826, 0.6466),
+    "MARCKOLSHEIM": (0.0, 0.0),
+    "MERTZWILLER": (0.0, 0.0),
+    "MITTELHAUSBERGEN": (0.0, 0.0),
+    "MOLSHEIM": (0.4693, 0.6152),
+    "MONSWILLER": (0.3591, 0.4415),
+    "MUNDOLSHEIM": (0.6163, 0.5221),
+    "MUSSIG": (0.4957, 0.8640),
+    "MUTTERSHOLTZ": (0.5010, 0.8272),
+    "MUTZIG": (0.4242, 0.6114),
+    "NIEDERBRONN LES BAIN": (0.5458, 0.2781),
+    "NORDHOUSE": (0.5941, 0.6758),
+    "OBERHOFFEN SUR MODER": (0.7333, 0.4009),
+    "STRASBOURG SUD": (0.6469, 0.6049),
+    "STRASBOURG OUEST": (0.6293, 0.5627),
+    "STRASBOURG NORD": (0.6614, 0.5438),
+}
+
+## --- Chargement de l'image ---
+image_path = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "carte_j.jpeg")
 )
-territoire_img = mpimg.imread(territoire_img_path)
+img = Image.open(image_path)
+img_width, img_height = img.size
+# --- Construction des points ---
+data_points = []
 
-# --- Coordonnées des compagnies sur l'image (x, y normalisés) ---
-coordonnees_territoires = {
-    "Compagnie de Haguenau": (0.6729, 0.3587),
-    "Compagnie de Saverne": (0.12, 0.20),
-    "Compagnie de Molsheim": (0.4808, 0.6028),
-    "Compagnie de Sélestat": (0.4213, 0.8362),
-    "Compagnie de l'EMS Nord": (0.6721, 0.5454),
-    "Compagnie de l'EMS Centre": (0.6614, 0.5708),
-    "Compagnie de l'EMS Sud": (0.6813, 0.6087),
-}
+for cis, (x_norm, y_norm) in coordonnees_territoires.items():
+    if cis not in blessures_par_cis:
+        continue  # Ignorer les CIS non présents dans les données filtrées
 
+    x_px = x_norm * img_width
+    y_px = y_norm * img_height
+    bls = blessures_par_cis.get(cis, 0)
+    ratio = ratios_blessures.get(cis, 0)
 
-# --- Mapping des services vers compagnies (à partir du CSV brut) ---
-mapping_services = {
-    "Cie Haguenau": "Compagnie de Haguenau",
-    "Cie Saverne": "Compagnie de Saverne",
-    "Cie Molsheim": "Compagnie de Molsheim",
-    "Cie Sélestat": "Compagnie de Sélestat",
-    "Cie Selestat": "Compagnie de Sélestat",  # pour robustesse
-    "Cie EMS Nord": "Compagnie de l'EMS Nord",
-    "Cie EMS Centre": "Compagnie de l'EMS Centre",
-    "Cie EMS Sud": "Compagnie de l'EMS Sud",
-}
-
-# --- Nettoyage de la colonne "Service" et application du mapping ---
-data["Service"] = data["Service"].astype(str).str.strip()
-data["Service normalisé"] = data["Service"].replace(mapping_services)
-
-# --- Garder uniquement les services mappés dans notre carte ---
-data_territoires = data[data["Service normalisé"].isin(coordonnees_territoires.keys())]
-
-# --- Calcul du total et des comptages ---
-total_blessures = len(data_territoires)
-blessures_par_territoire = data_territoires["Service normalisé"].value_counts()
-
-# --- Affichage sur la carte ---
-fig_territoire, ax = plt.subplots(figsize=(8, 10))
-ax.imshow(territoire_img)
-ax.axis("off")
-
-for territoire, (x, y) in coordonnees_territoires.items():
-    count = blessures_par_territoire.get(territoire, 0)
-    pourcentage = (count / total_blessures * 100) if total_blessures > 0 else 0
-
-    # Point rouge
-    ax.plot(
-        x * territoire_img.shape[1],
-        y * territoire_img.shape[0],
-        "ro",
-        markersize=6 + pourcentage * 0.2,
+    data_points.append(
+        {
+            "CIS": cis,
+            "x": x_px,
+            "y": y_px,
+            "Blessures": bls,
+            "Ratio": ratio,
+        }
     )
 
-    # Étiquette avec % et nom court
-    ax.text(
-        x * territoire_img.shape[1],
-        y * territoire_img.shape[0] - 10,
-        f"{territoire.split()[-1]}\n{pourcentage:.1f}%",
+
+offsets = {
+    "ALTECKENDORF": (0, 3),
+    "BALDENHEIM": (0, 5),
+    "BARR": (0, -3),
+    "BERGBIETEN": (0, -2),
+    "BETSCHDORF": (0, -9),
+    "BISCHHEIM": (20, -10),
+    "BISCHWILLER": (0, -1),
+    "BRUMATH": (10, 10),
+    "DAMBACH-LA-VILLE": (0, 9),
+    "DOSSENHEIM S/ZINSEL": (0, 4),
+    "DRULINGEN": (0, 0),
+    "DRUSENHEIM": (0, 2),
+    "DURRENBACH": (0, 7),
+    "EBERSHEIM": (0, -8),
+    "EBERSMUNSTER": (0, 8),
+    "ERGERSHEIM": (0, -6),
+    "FEGERSHEIM": (10, -10),
+    "FINKWILLER": (-25, 10),
+    "GAMBSHEIM": (0, -2),
+    "GEISPOLSHEIM": (15, 15),
+    "GRIES": (-15, 10),
+    "GRIESHEIM-SUR-SOUFFE": (10, 10),
+    "HAGUENAU": (0, 3),
+    "HATTEN": (0, -7),
+    "HILSENHEIM": (0, -3),
+    "HOCHFELDEN": (0, -10),
+    "HOENHEIM": (-20, 15),
+    "ILLKIRCH-GRAFFENSTAD": (20, 20),
+    "INGWILLER": (0, 3),
+    "LA SOUFFEL": (0, 1),
+    "LINGOLSHEIM": (-20, -10),
+    "LIPSHEIM": (0, 8),
+    "MOLSHEIM": (-15, -20),
+    "MONSWILLER": (0, 5),
+    "MUNDOLSHEIM": (10, -20),
+    "MUSSIG": (0, 7),
+    "MUTTERSHOLTZ": (0, -3),
+    "MUTZIG": (0, 5),
+    "NIEDERBRONN LES BAIN": (0, 7),
+    "NORDHOUSE": (0, 4),
+    "OBERHOFFEN SUR MODER": (0, -8),
+    "STRASBOURG SUD": (0, 25),
+    "STRASBOURG OUEST": (-20, 10),
+    "STRASBOURG NORD": (0, -25),
+}
+
+
+# --- 📌 Carte des blessures par territoire (matplotlib) ---
+
+st.subheader("🗺️ Carte des blessures par territoire (avec effectif et ratio %)")
+
+# Création du graphique matplotlib
+fig_map, ax_map = plt.subplots(figsize=(10, 12))
+ax_map.imshow(img)
+ax_map.axis("off")
+
+# Affichage des points avec annotations
+for point in data_points:
+    x = point["x"]
+    y = point["y"]
+    y_offset = np.random.randint(-15, 15)  # Décalage aléatoire pour éparpiller
+
+    ax_map.plot(x, y, "ro", markersize=6)
+
+    annotation = f"{point['CIS']}\n{point['Blessures']} blessés\n{point['Ratio']:.1f}%"
+
+    offset = offsets.get(point["CIS"], (0, np.random.randint(-15, 15)))
+    x_offset, y_offset = offset
+
+    ax_map.text(
+        x + x_offset,
+        y + y_offset,
+        annotation,
+        fontsize=6,
         color="white",
-        fontsize=8,
         ha="center",
+        va="center",
         bbox=dict(
             facecolor="black",
             alpha=0.7,
@@ -574,13 +837,9 @@ for territoire, (x, y) in coordonnees_territoires.items():
         ),
     )
 
-st.pyplot(fig_territoire)
+if not data_points:
+    st.warning("Aucun CIS avec des données pour ces filtres.")
+    st.stop()
 
-# --- Optionnel : liste des services non mappés pour contrôle ---
-services_observés = set(data["Service"].dropna().unique())
-services_connus = set(mapping_services.keys())
-non_mappés = services_observés - services_connus
-
-if non_mappés:
-    st.warning("⚠️ Services non reconnus (à mapper si besoin) :")
-    st.write(sorted(non_mappés))
+# Affichage de la figure dans Streamlit
+st.pyplot(fig_map)
