@@ -2,14 +2,9 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import json
-import folium
-from streamlit_folium import st_folium
-import branca.colormap as cm
-from folium.plugins import MiniMap
 import numpy as np
-from streamlit_folium import folium_static
 import os
+import matplotlib.image as mpimg
 
 
 # --- Chargement des données ---
@@ -880,175 +875,225 @@ for group_col in ["cie", "ut", "sexe", "tranche_age"]:
                 tab[f"% {color}"] = round(100 * tab[color] / tab["Total"], 1)
         st.dataframe(tab)
 
-st.subheader("Carte Interactive des UT")
+image_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "carte_j.jpeg")
+)
+ut_mapping = {
+    "UT STRASBOURG OUEST": "STRASBOURG OUEST",
+    "UT STRASBOURG NORD": "STRASBOURG NORD",
+    "UT STRASBOURG FINKWI": "FINKWI",
+    "UT STRASBOURG SUD": "STRASBOURG SUD",
+    "UT HAGUENAU": "HAGUENAU",
+    "UT MOLSHEIM": "MOLSHEIM",
+    "UT INGWILLER": "INGWILLER",
+    "UT OBERNAI": "OBERNAI",
+    "UT LINGOLSHEIM": "LINGOLSHEIM",
+    "UT BISCHWILLER": "BISCHWILLER",
+    "UT SÉLESTAT": "SELESTAT",
+    "UT SAVERNE": "SAVERNE",
+    "UT BRUMATH": "BRUMATH",
+    "UT ERSTEIN": "ERSTEIN",
+    "UT WISSEMBOURG": "WISSEMBOURG",
+    "UT BOUXWILLER": "BOUXWILLER",
+    "UT BENFELD": "ERSTEIN",
+    "UT BOOFZHEIM": "ERSTEIN",
+    "UT BARR": "OBERNAI",
+    "UT DRULINGEN": "SAVERNE",
+    "UT DIEMERINGEN": "SAVERNE",
+    "UT FEGERSHEIM": "ILLKIRCH-GRAFFENSTAD",
+    "UT GAMBSHEIM": "BRUMATH",
+    "UT HOENHEIM": "HOENHEIM",
+    "UT HOCHFELDEN": "BOUXWILLER",
+    "UT LAUTERBOURG": "WISSEMBOURG",
+    "UT MARCKOLSHEIM": "SELESTAT",
+    "UT MARMOUTIER": "SAVERNE",
+    "UT NIEDERBRONN-LES-B": "REICHSHOFFEN",
+    "UT PETERSBACH": "SAVERNE",
+    "UT SAALES": "SELESTAT",
+    "UT SARRE-UNION": "SAVERNE",
+    "UT SCHIRMECK": "SELESTAT",
+    "UT SELTZ": "WISSEMBOURG",
+    "UT SOUFFLENHEIM": "BISCHWILLER",
+    "UT SOULTZ-SOUS-FORÊT": "WISSEMBOURG",
+    "UT SUNDHOUSE": "SUNDHOUSE",
+    "UT TRUCHTERSHEIM": "STRASBOURG-2",
+    "UT URMATT": "MOLSHEIM",
+    "UT VAL-DE-MODER": "BOUXWILLER",
+    "UT VENDENHEIM": "SCHILTIGHEIM",
+    "UT VILLE": "STRASBOURG-1",
+    "UT WASSELONNE": "MOLSHEIM",
+    "UT WINGEN-SUR-MODER": "INGWILLER",
+    "UT WOERTH": "WISSEMBOURG",
+    "UT LEMBACH": "WISSEMBOURG",
+}
 
+coordonnees_territoires = {
+    "ALTECKENDORF": (0.5168, 0.4031),
+    "BALDENHEIM": (0.5106, 0.8452),
+    "BARR": (0.4351, 0.7152),
+    "BERGBIETEN": (0.4234, 0.5795),
+    "BETSCHDORF": (0.7433, 0.3089),
+    "BISCHHEIM": (0.6354, 0.5411),
+    "BISCHWILLER": (0.7073, 0.4134),
+    "BRUMATH": (0.6078, 0.4458),
+    "DAMBACH-LA-VILLE": (0.4170, 0.7821),
+    "DOSSENHEIM S/ZINSEL": (0.3346, 0.3912),
+    "DRULINGEN": (0.2038, 0.3511),
+    "DRUSENHEIM": (0.7816, 0.4182),
+    "DURRENBACH": (0.6354, 0.3111),
+    "EBERSHEIM": (0.4744, 0.7963),
+    "EBERSMUNSTER": (0.5010, 0.8008),
+    "ERGERSHEIM": (0.4862, 0.5762),
+    "FEGERSHEIM": (0.6132, 0.6423),
+    "FINKWILLER": (0.6446, 0.5725),
+    "GAMBSHEIM": (0.7456, 0.4707),
+    "GEISPOLSHEIM": (0.5719, 0.6233),
+    "GRIES": (0.6828, 0.4285),
+    "GRIESHEIM-SUR-SOUFFE": (0.6293, 0.6239),
+    "HAGUENAU": (0.6522, 0.3755),
+    "HATTEN": (0.8183, 0.3100),
+    "HILSENHEIM": (0.5297, 0.8061),
+    "HOCHFELDEN": (0.4984, 0.4301),
+    "HOENHEIM": (0.6530, 0.5275),
+    "ILLKIRCH-GRAFFENSTAD": (0.6308, 0.6260),
+    "INGWILLER": (0.4266, 0.3439),
+    "LA SOUFFEL": (0.6105, 0.5325),
+    "LINGOLSHEIM": (0.5956, 0.5892),
+    "LIPSHEIM": (0.5826, 0.6466),
+    "MARCKOLSHEIM": (0.0, 0.0),
+    "MERTZWILLER": (0.0, 0.0),
+    "MITTELHAUSBERGEN": (0.0, 0.0),
+    "MOLSHEIM": (0.4693, 0.6152),
+    "MONSWILLER": (0.3591, 0.4415),
+    "MUNDOLSHEIM": (0.6163, 0.5221),
+    "MUSSIG": (0.4957, 0.8640),
+    "MUTTERSHOLTZ": (0.5010, 0.8272),
+    "MUTZIG": (0.4242, 0.6114),
+    "NIEDERBRONN LES BAIN": (0.5458, 0.2781),
+    "NORDHOUSE": (0.5941, 0.6758),
+    "OBERHOFFEN SUR MODER": (0.7333, 0.4009),
+    "STRASBOURG SUD": (0.6469, 0.6049),
+    "STRASBOURG OUEST": (0.6293, 0.5627),
+    "STRASBOURG NORD": (0.6614, 0.5438),
+    "SELESTAT": (0.4542, 0.8415),
+    "OBERNAI": (0.4654, 0.6775),
+    "REICHSHOFFEN": (0.5592, 0.2926),
+    "ERSTEIN": (0.5930, 0.7058),
+    "SCHILTIGHEIM": (0.6393, 0.5465),
+    "SUNDHOUSE": (0.5630, 0.8411),
+}
 
-@st.cache_data
-def load_geojson():
-    geo_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "alsace_map.geojson")
+offsets = {
+    "ALTECKENDORF": (0, 3),
+    "BALDENHEIM": (0, 5),
+    "BARR": (0, -3),
+    "BERGBIETEN": (0, -2),
+    "BETSCHDORF": (0, -9),
+    "BISCHHEIM": (20, -10),
+    "BISCHWILLER": (0, -1),
+    "BRUMATH": (10, 10),
+    "DAMBACH-LA-VILLE": (0, 9),
+    "DOSSENHEIM S/ZINSEL": (0, 4),
+    "DRULINGEN": (0, 0),
+    "DRUSENHEIM": (0, 2),
+    "DURRENBACH": (0, 7),
+    "EBERSHEIM": (0, -8),
+    "EBERSMUNSTER": (0, 8),
+    "ERGERSHEIM": (0, -6),
+    "FEGERSHEIM": (10, -10),
+    "FINKWILLER": (-25, 10),
+    "GAMBSHEIM": (0, -2),
+    "GEISPOLSHEIM": (15, 15),
+    "GRIES": (-15, 10),
+    "GRIESHEIM-SUR-SOUFFE": (10, 10),
+    "HAGUENAU": (0, 3),
+    "HATTEN": (0, -7),
+    "HILSENHEIM": (0, -3),
+    "HOCHFELDEN": (0, -10),
+    "HOENHEIM": (-20, 15),
+    "ILLKIRCH-GRAFFENSTAD": (20, 20),
+    "INGWILLER": (0, 3),
+    "LA SOUFFEL": (0, 1),
+    "LINGOLSHEIM": (-20, -10),
+    "LIPSHEIM": (0, 8),
+    "MOLSHEIM": (-15, -20),
+    "MONSWILLER": (0, 5),
+    "MUNDOLSHEIM": (10, -20),
+    "MUSSIG": (0, 7),
+    "MUTTERSHOLTZ": (0, -3),
+    "MUTZIG": (0, 5),
+    "NIEDERBRONN LES BAIN": (0, 7),
+    "NORDHOUSE": (0, 4),
+    "OBERHOFFEN SUR MODER": (0, -8),
+    "STRASBOURG SUD": (0, 25),
+    "STRASBOURG OUEST": (-20, 10),
+    "STRASBOURG NORD": (0, -25),
+}
+
+st.subheader("🗺️ Carte des effectifs et de l’IMC moyen par territoire")
+# --- Normaliser et mapper UT
+df_filtered["ut_normalise"] = df_filtered["ut"].astype(str).str.upper().str.strip()
+df_filtered["cis"] = df_filtered["ut_normalise"].map(ut_mapping).fillna("INCONNU")
+
+# Nettoyage de l’IMC
+df_filtered["imc"] = pd.to_numeric(df_filtered["imc"], errors="coerce")
+
+# Agrégation pour la carte
+stats = (
+    df_filtered[df_filtered["cis"] != "INCONNU"]
+    .groupby("cis")
+    .agg(effectif=("cis", "count"), imc_moyen=("imc", "mean"))
+    .reset_index()
+)
+
+# Coordonnées et offsets identiques à SPV (coller ici ton dict `coordonnees_territoires` et `offsets`)
+# --- Place ici tes variables `coordonnees_territoires`, `offsets` et `image_path` (exactement comme dans SPV) ---
+
+# Chargement de l’image
+img = mpimg.imread(image_path)
+img_height, img_width = img.shape[0], img.shape[1]
+
+fig, ax = plt.subplots(figsize=(10, 12))
+ax.imshow(img)
+ax.axis("off")
+
+for _, row in stats.iterrows():
+    nom = row["cis"]
+    if nom not in coordonnees_territoires:
+        continue
+
+    x_norm, y_norm = coordonnees_territoires[nom]
+    x = x_norm * img_width
+    y = y_norm * img_height
+
+    x_offset, y_offset = offsets.get(nom, (0, 0))
+
+    # Cercle rouge avec bord blanc
+    ax.plot(
+        x,
+        y,
+        "o",
+        markersize=8,
+        color="red",
+        markeredgecolor="white",
+        markeredgewidth=1.5,
     )
-    with open(geo_path, "r", encoding="utf-8") as f:
-        return json.load(f)
 
-
-try:
-    geojson_data = load_geojson()
-
-    # Nettoyage des noms d’UT
-    ut_mapping = {
-        "UT STRASBOURG OUEST": "STRASBOURG-3",
-        "UT STRASBOURG NORD": "STRASBOURG-3",
-        "UT STRASBOURG FINKWI": "STRASBOURG-3",
-        "UT STRASBOURG SUD": "STRASBOURG-3",
-        "UT HAGUENAU": "HAGUENAU",
-        "UT MOLSHEIM": "MOLSHEIM",
-        "UT INGWILLER": "INGWILLER",
-        "UT OBERNAI": "OBERNAI",
-        "UT LINGOLSHEIM": "LINGOLSHEIM",
-        "UT BISCHWILLER": "BISCHWILLER",
-        "UT SÉLESTAT": "SÉLESTAT",
-        "UT SAVERNE": "SAVERNE",
-        "UT BRUMATH": "BRUMATH",
-        "UT ERSTEIN": "ERSTEIN",
-        "UT WISSEMBOURG": "WISSEMBOURG",
-        "UT BOUXWILLER": "BOUXWILLER",
-        "UT BENFELD": "ERSTEIN",
-        "UT BOOFZHEIM": "ERSTEIN",
-        "UT BARR": "OBERNAI",
-        "UT DRULINGEN": "SAVERNE",
-        "UT DIEMERINGEN": "SAVERNE",
-        "UT FEGERSHEIM": "ILLKIRCH-GRAFFENSTADEN",
-        "UT GAMBSHEIM": "BRUMATH",
-        "UT HOENHEIM": "HŒNHEIM",
-        "UT HOCHFELDEN": "BOUXWILLER",
-        "UT LAUTERBOURG": "WISSEMBOURG",
-        "UT MARCKOLSHEIM": "SÉLESTAT",
-        "UT MARMOUTIER": "SAVERNE",
-        "UT NIEDERBRONN-LES-B": "REICHSHOFFEN",
-        "UT PETERSBACH": "SAVERNE",
-        "UT SAALES": "SÉLESTAT",
-        "UT SARRE-UNION": "SAVERNE",
-        "UT SCHIRMECK": "SÉLESTAT",
-        "UT SELTZ": "WISSEMBOURG",
-        "UT SOUFFLENHEIM": "BISCHWILLER",
-        "UT SOULTZ-SOUS-FORÊT": "WISSEMBOURG",
-        "UT SUNDHOUSE": "SÉLESTAT",
-        "UT TRUCHTERSHEIM": "STRASBOURG-2",
-        "UT URMATT": "MOLSHEIM",
-        "UT VAL-DE-MODER": "BOUXWILLER",
-        "UT VENDENHEIM": "SCHILTIGHEIM",
-        "UT VILLE": "STRASBOURG-1",
-        "UT WASSELONNE": "MOLSHEIM",
-        "UT WINGEN-SUR-MODER": "INGWILLER",
-        "UT WOERTH": "WISSEMBOURG",
-    }
-
-    df_filtered["UT_clean"] = (
-        df_filtered["ut"]
-        .astype(str)
-        .str.strip()
-        .str.upper()
-        .replace({k.upper(): v for k, v in ut_mapping.items()})
+    # Texte
+    ax.text(
+        x + x_offset,
+        y + y_offset,
+        f"{nom}\n{int(row['effectif'])} pers\nIMC {row['imc_moyen']:.1f}",
+        fontsize=7,
+        color="white",
+        ha="center",
+        va="center",
+        bbox=dict(
+            facecolor="black", alpha=0.7, edgecolor="none", boxstyle="round,pad=0.2"
+        ),
     )
 
-    # Moyenne d'IMC par UT
-    imc_moyen = df_filtered.groupby("UT_clean")["imc"].mean().reset_index()
-    imc_moyen.columns = ["nom", "imc_moyen"]
-
-    # Effectif par UT
-    effectif_ut = df_filtered["UT_clean"].value_counts().reset_index()
-    effectif_ut.columns = ["nom", "effectif"]
-
-    # Construction des features géographiques
-    geo_features = [
-        {**f["properties"], "geometry": f["geometry"]} for f in geojson_data["features"]
-    ]
-    geo_df = pd.DataFrame(geo_features)
-    geo_df["nom"] = geo_df["nom"].str.strip().str.upper()
-
-    # Fusion avec données
-    geo_df = geo_df.merge(effectif_ut, on="nom", how="left")
-    geo_df = geo_df.merge(imc_moyen, on="nom", how="left")
-    geo_df.fillna({"effectif": 0, "imc_moyen": 0}, inplace=True)
-
-    # Carte
-    m = folium.Map(location=[48.6, 7.6], zoom_start=9, control_scale=True)
-
-    colormap = cm.linear.YlOrRd_09.scale(
-        geo_df["imc_moyen"].min(), geo_df["imc_moyen"].max()
-    )
-    colormap.caption = "IMC moyen"
-    colormap.add_to(m)
-
-    folium.Choropleth(
-        geo_data=geojson_data,
-        data=geo_df,
-        columns=["nom", "imc_moyen"],
-        key_on="feature.properties.nom",
-        fill_color="YlOrRd",
-        fill_opacity=0.6,
-        line_opacity=0.5,
-        line_color="black",
-        legend_name="IMC moyen par UT",
-        highlight=True,
-    ).add_to(m)
-
-    for _, row in geo_df.iterrows():
-        if row["effectif"] > 0:
-            geom = row["geometry"]
-            coords = (
-                geom["coordinates"][0]
-                if geom["type"] == "Polygon"
-                else geom["coordinates"][0][0]
-            )
-            lon = sum(pt[0] for pt in coords) / len(coords)
-            lat = sum(pt[1] for pt in coords) / len(coords)
-
-            tooltip_text = f"""
-<b>UT : {row['nom']}</b><br>
-Effectif : {int(row['effectif'])}<br>
-IMC moyen : {row['imc_moyen']:.2f}
-"""
-            folium.CircleMarker(
-                location=(lat, lon),
-                radius=7,
-                color=colormap(row["imc_moyen"]),
-                fill=True,
-                fill_color=colormap(row["imc_moyen"]),
-                fill_opacity=0.9,
-            ).add_to(m)
-            lat_offset = lat + 0.01  # décalage vers le nord
-            lon_offset = lon + 0.01
-            folium.map.Marker(
-                [lat_offset, lon_offset],
-                icon=folium.DivIcon(
-                    html=f"""
-                    <div style="
-                        font-size: 11px;
-                        color: white;
-                        background-color: rgba(0, 0, 0, 0.6);
-                        padding: 2px 6px;
-                        border-radius: 4px;
-                        font-weight: bold;
-                        text-align: center;
-                        white-space: nowrap;
-                        box-shadow: 1px 1px 2px rgba(0,0,0,0.5);">
-                        {row['nom']}<br>
-                        Effectif: {int(row['effectif'])}<br>
-                        IMC: {row['imc_moyen']:.1f}
-                    </div>
-                    """
-                ),
-            ).add_to(m)
-
-    MiniMap(toggle_display=True).add_to(m)
-    folium.LayerControl().add_to(m)
-    st_folium(m, use_container_width=True, height=700)
-
-except Exception as e:
-    st.error(f"Erreur de chargement de la carte : {e}")
-
+st.pyplot(fig)
 
 st.markdown(
     """
