@@ -328,9 +328,10 @@ df_filtered = df_filtered[
     & (df_filtered["vo2max"].fillna(0) <= vo2_max)
 ]
 df_filtered = df_filtered[
-    (df_filtered["vo2max_leger"].fillna(0) >= vo2_min)
-    & (df_filtered["vo2max_leger"].fillna(0) <= vo2_max)
+    (df_filtered["vo2max_leger"].fillna(0) >= vo2l_min)
+    & (df_filtered["vo2max_leger"].fillna(0) <= vo2l_max)
 ]
+
 df_filtered["couleur_luc"] = df_filtered["niveau luc léger"].apply(niveau_to_couleur)
 df_filtered["couleur_pompes"] = df_filtered["niveau pompes"].apply(niveau_to_couleur)
 df_filtered["couleur_tractions"] = df_filtered["niveau tractions"].apply(
