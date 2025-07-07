@@ -906,6 +906,79 @@ for group_col in ["cie", "ut", "sexe", "tranche_age"]:
                 tab[f"% {color}"] = round(100 * tab[color] / tab["Total"], 1)
         st.dataframe(tab)
 
+st.subheader(
+    "📋 Liste des agents avec des résultats manquants ou égaux à 0 aux tests physiques"
+)
+
+# --- Nettoyage du matricule ---
+if "matricule" in df_filtered.columns:
+    df_filtered["matricule"] = (
+        df_filtered["matricule"]
+        .astype(str)
+        .str.replace(".0", "", regex=False)
+        .str.strip()
+    )
+
+# --- Colonnes à surveiller ---
+colonnes_tests = [
+    "luc léger",
+    "niveau luc léger",
+    "pompes",
+    "niveau pompes",
+    "tractions",
+    "niveau tractions",
+]
+
+# --- Sélection des agents incomplets ---
+conditions = (df_filtered[colonnes_tests].isna()) | (df_filtered[colonnes_tests] == 0)
+agents_incomplets = df_filtered[conditions.any(axis=1)].copy()
+
+
+# --- Déterminer les tests manquants ou nuls pour chaque agent ---
+def lister_tests_manquants_ou_zero(row):
+    return [col for col in colonnes_tests if pd.isna(row[col]) or row[col] == 0]
+
+
+agents_incomplets["tests_manquants_ou_zero"] = agents_incomplets.apply(
+    lister_tests_manquants_ou_zero, axis=1
+)
+
+# --- Colonnes à afficher ---
+colonnes_affichage = [
+    "matricule",
+    "nom",
+    "prenom",
+    "sexe",
+    "cie",
+    "ut",
+    "tests_manquants_ou_zero",
+]
+colonnes_presentes = [
+    col for col in colonnes_affichage if col in agents_incomplets.columns
+]
+
+# --- Affichage du tableau ---
+table_resultats_vides = agents_incomplets[colonnes_presentes].sort_values(
+    by="matricule"
+)
+
+if table_resultats_vides.empty:
+    st.success(
+        "✅ Aucun agent avec des résultats manquants ou nuls dans les tests physiques."
+    )
+else:
+    st.write(f"{len(table_resultats_vides)} agents concernés :")
+    st.dataframe(table_resultats_vides.reset_index(drop=True))
+
+    # --- Export CSV ---
+    csv_incomplets = table_resultats_vides.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        "📥 Télécharger cette liste au format CSV",
+        data=csv_incomplets,
+        file_name="agents_resultats_incomplets_spp.csv",
+        mime="text/csv",
+    )
+
 image_path = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "carte_j.jpeg")
 )

@@ -14,7 +14,11 @@ def load_data():
         os.path.join(os.path.dirname(__file__), "..", "merged_data_spv.csv")
     )
 
-    df = pd.read_csv(data_path)
+    df = pd.read_csv(data_path, dtype={"matricule": str})
+
+    # Nettoyage des matricules (ex: supprimer les .0 si fichier mal encodé)
+    if "matricule" in df.columns:
+        df["matricule"] = df["matricule"].str.replace(".0", "", regex=False).str.strip()
 
     # Standardiser les noms de colonnes : minuscules, sans espace
     df.columns = df.columns.str.strip().str.lower()
@@ -920,6 +924,77 @@ for col in cols_group[1:]:
             if color in tab.columns:
                 tab[f"% {color}"] = round(100 * tab[color] / tab["Total"], 1)
         st.dataframe(tab)
+
+st.subheader(
+    "📋 Liste des agents avec des résultats manquants ou égaux à 0 aux tests physiques"
+)
+st.subheader(
+    "📋 Liste des agents avec des résultats manquants ou égaux à 0 aux tests physiques"
+)
+
+# Colonnes à surveiller
+colonnes_tests = [
+    "luc léger",
+    "niveau luc léger",
+    "pompes",
+    "niveau pompes",
+    "tractions",
+    "niveau tractions",
+]
+
+# Sélection des agents incomplets
+conditions = (df_filtered[colonnes_tests].isna()) | (df_filtered[colonnes_tests] == 0)
+agents_incomplets = df_filtered[conditions.any(axis=1)].copy()
+
+
+# Ajout de la liste des tests problématiques
+def lister_tests_manquants_ou_zero(row):
+    return [col for col in colonnes_tests if pd.isna(row[col]) or row[col] == 0]
+
+
+agents_incomplets["tests_manquants_ou_zero"] = agents_incomplets.apply(
+    lister_tests_manquants_ou_zero, axis=1
+)
+
+# Colonnes d'affichage
+colonnes_affichage = [
+    "matricule",
+    "nom",
+    "prenom",
+    "sexe",
+    "cie_x",
+    "ut_x",
+    "tests_manquants_ou_zero",
+]
+colonnes_presentes = [
+    col for col in colonnes_affichage if col in agents_incomplets.columns
+]
+table_resultats_vides = agents_incomplets[colonnes_presentes].sort_values(
+    by="matricule"
+)
+# Éviter le format numérique (ex : 12,345 → "12345")
+table_resultats_vides["matricule"] = (
+    table_resultats_vides["matricule"].astype(str).str.strip()
+)
+
+
+# Affichage sans l’index parasite
+if table_resultats_vides.empty:
+    st.success(
+        "✅ Aucun agent avec des résultats manquants ou nuls dans les tests physiques."
+    )
+else:
+    st.write(f"{len(table_resultats_vides)} agents concernés :")
+    st.dataframe(table_resultats_vides.reset_index(drop=True), use_container_width=True)
+
+    # Export CSV
+    csv_incomplets = table_resultats_vides.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        "📥 Télécharger cette liste au format CSV",
+        data=csv_incomplets,
+        file_name="agents_resultats_incomplets.csv",
+        mime="text/csv",
+    )
 
 
 st.markdown(
