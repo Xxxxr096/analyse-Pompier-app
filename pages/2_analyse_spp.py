@@ -489,38 +489,50 @@ else:
 st.subheader("Distribution du Palier Luc Léger par Catégorie d'IMC")
 
 if "luc léger" in df_filtered.columns and "imc" in df_filtered.columns:
-    # 1. Créer la catégorie d’IMC
+
     def classify_imc(imc):
         if pd.isna(imc):
             return "Inconnu"
         elif imc < 18.5:
             return "Insuffisance pondérale"
-        elif imc >= 18.5 and imc <= 25.0:
+        elif imc < 25:
             return "Normal"
-        elif imc >= 25 and imc <= 29.9:
+        elif imc < 30:
             return "Surpoids"
-        elif imc >= 30 and imc <= 34.9:
+        elif imc < 35:
             return "Obésité modérée"
-        elif imc >= 35.0 and imc <= 39.9:
+        elif imc < 40:
             return "Obésité sévère"
         else:
             return "Obésité massive"
+
+    ordre_imc = [
+        "Insuffisance pondérale",
+        "Normal",
+        "Surpoids",
+        "Obésité modérée",
+        "Obésité sévère",
+        "Obésité massive",
+        "Inconnu",
+    ]
+
+    palette = {
+        "Insuffisance pondérale": "blue",
+        "Normal": "green",
+        "Surpoids": "orange",
+        "Obésité modérée": "red",
+        "Obésité sévère": "darkred",
+        "Obésité massive": "black",
+        "Inconnu": "gray",
+    }
 
     df_viz = df_filtered[["luc léger", "imc"]].dropna()
     if df_viz.empty:
         st.info("Aucune donnée disponible pour cette combinaison de filtres.")
     else:
-        df_viz["imc_cat"] = df_viz["imc"].apply(classify_imc)
-
-        palette = {
-            "Normal": "green",
-            "Surpoids": "orange",
-            "Obésité modérée": "red",
-            "Obésité sévère": "darkred",
-            "Obésité massive": "black",
-            "Insuffisance pondérale": "blue",
-            "Inconnu": "gray",
-        }
+        df_viz["imc_cat"] = pd.Categorical(
+            df_viz["imc"].apply(classify_imc), categories=ordre_imc, ordered=True
+        )
 
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.histplot(
@@ -531,13 +543,32 @@ if "luc léger" in df_filtered.columns and "imc" in df_filtered.columns:
             palette=palette,
             bins=15,
             edgecolor="white",
+            hue_order=ordre_imc,
         )
         ax.set_title("Distribution du Palier Luc Léger par Catégorie d'IMC")
         ax.set_xlabel("Palier Luc Léger")
         ax.set_ylabel("Nombre d'individus")
+
+        # 🔧 Forcer la légende complète
+        handles = []
+        for cat in ordre_imc:
+            if cat in palette:
+                patch = plt.Line2D(
+                    [0],
+                    [0],
+                    marker="s",
+                    color="w",
+                    label=cat,
+                    markerfacecolor=palette[cat],
+                    markersize=10,
+                )
+                handles.append(patch)
+        ax.legend(handles=handles, title="Catégorie IMC")
+
         st.pyplot(fig)
 else:
     st.warning("Les colonnes nécessaires 'luc léger' et 'imc' sont manquantes.")
+
 
 st.subheader("Distribution du Tour de Taille selon le Sexe et les Normes de Santé")
 
