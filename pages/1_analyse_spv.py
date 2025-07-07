@@ -1003,6 +1003,7 @@ coordonnees_territoires = {
     "ERSTEIN": (0.5930, 0.7058),
     "SCHILTIGHEIM": (0.6393, 0.5465),
     "SUNDHOUSE": (0.5630, 0.8411),
+    "SAVERNE": (0.3515, 0.4523),
 }
 
 offsets = {
