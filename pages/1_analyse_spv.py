@@ -928,9 +928,7 @@ for col in cols_group[1:]:
 st.subheader(
     "📋 Liste des agents avec des résultats manquants ou égaux à 0 aux tests physiques"
 )
-st.subheader(
-    "📋 Liste des agents avec des résultats manquants ou égaux à 0 aux tests physiques"
-)
+
 
 # Sélection dynamique des tests à surveiller
 colonnes_disponibles = [
