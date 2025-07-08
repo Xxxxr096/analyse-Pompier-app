@@ -932,8 +932,8 @@ st.subheader(
     "📋 Liste des agents avec des résultats manquants ou égaux à 0 aux tests physiques"
 )
 
-# Colonnes à surveiller
-colonnes_tests = [
+# ✅ Permettre le choix des colonnes à surveiller
+colonnes_disponibles = [
     "luc léger",
     "niveau luc léger",
     "pompes",
@@ -942,58 +942,69 @@ colonnes_tests = [
     "niveau tractions",
 ]
 
-# Sélection des agents incomplets
-conditions = (df_filtered[colonnes_tests].isna()) | (df_filtered[colonnes_tests] == 0)
-agents_incomplets = df_filtered[conditions.any(axis=1)].copy()
-
-
-# Ajout de la liste des tests problématiques
-def lister_tests_manquants_ou_zero(row):
-    return [col for col in colonnes_tests if pd.isna(row[col]) or row[col] == 0]
-
-
-agents_incomplets["tests_manquants_ou_zero"] = agents_incomplets.apply(
-    lister_tests_manquants_ou_zero, axis=1
+colonnes_a_surveiller = st.multiselect(
+    "🧪 Sélectionnez les tests à surveiller pour détecter les valeurs manquantes ou nulles :",
+    options=colonnes_disponibles,
+    default=colonnes_disponibles,
 )
 
-# Colonnes d'affichage
-colonnes_affichage = [
-    "matricule",
-    "nom",
-    "prenom",
-    "sexe",
-    "cie_x",
-    "ut_x",
-    "tests_manquants_ou_zero",
-]
-colonnes_presentes = [
-    col for col in colonnes_affichage if col in agents_incomplets.columns
-]
-table_resultats_vides = agents_incomplets[colonnes_presentes].sort_values(
-    by="matricule"
-)
-# Éviter le format numérique (ex : 12,345 → "12345")
-table_resultats_vides["matricule"] = (
-    table_resultats_vides["matricule"].astype(str).str.strip()
-)
-
-
-# Affichage sans l’index parasite
-if table_resultats_vides.empty:
-    st.success(
-        "✅ Aucun agent avec des résultats manquants ou nuls dans les tests physiques."
+if colonnes_a_surveiller:
+    # Sélection des agents incomplets pour les colonnes sélectionnées
+    conditions = (df_filtered[colonnes_a_surveiller].isna()) | (
+        df_filtered[colonnes_a_surveiller] == 0
     )
-else:
-    st.write(f"{len(table_resultats_vides)} agents concernés :")
-    st.dataframe(table_resultats_vides.reset_index(drop=True), use_container_width=True)
+    agents_incomplets = df_filtered[conditions.any(axis=1)].copy()
 
-    # Export CSV
-    csv_incomplets = table_resultats_vides.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        "📥 Télécharger cette liste au format CSV",
-        data=csv_incomplets,
-        file_name="agents_resultats_incomplets.csv",
-        mime="text/csv",
+    # Liste des colonnes concernées pour chaque ligne
+    def lister_tests_manquants_ou_zero(row):
+        return [
+            col for col in colonnes_a_surveiller if pd.isna(row[col]) or row[col] == 0
+        ]
+
+    agents_incomplets["tests_manquants_ou_zero"] = agents_incomplets.apply(
+        lister_tests_manquants_ou_zero, axis=1
+    )
+
+    colonnes_affichage = [
+        "matricule",
+        "nom",
+        "prenom",
+        "sexe",
+        "cie_x",
+        "ut_x",
+        "tests_manquants_ou_zero",
+    ]
+    colonnes_presentes = [
+        col for col in colonnes_affichage if col in agents_incomplets.columns
+    ]
+    table_resultats_vides = agents_incomplets[colonnes_presentes].sort_values(
+        by="matricule"
+    )
+    table_resultats_vides["matricule"] = (
+        table_resultats_vides["matricule"].astype(str).str.strip()
+    )
+
+    if table_resultats_vides.empty:
+        st.success(
+            "✅ Aucun agent avec des résultats manquants ou nuls dans les tests sélectionnés."
+        )
+    else:
+        st.write(f"{len(table_resultats_vides)} agents concernés :")
+        st.dataframe(
+            table_resultats_vides.reset_index(drop=True), use_container_width=True
+        )
+
+        # Bouton de téléchargement
+        csv_incomplets = table_resultats_vides.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "📥 Télécharger cette liste au format CSV",
+            data=csv_incomplets,
+            file_name="agents_resultats_incomplets.csv",
+            mime="text/csv",
+        )
+else:
+    st.info(
+        "Veuillez sélectionner au moins un test pour identifier les agents incomplets."
     )
 
 
