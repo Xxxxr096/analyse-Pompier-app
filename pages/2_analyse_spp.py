@@ -919,8 +919,8 @@ if "matricule" in df_filtered.columns:
         .str.strip()
     )
 
-# --- Colonnes à surveiller ---
-colonnes_tests = [
+# --- Sélection des colonnes à surveiller ---
+colonnes_disponibles = [
     "luc léger",
     "niveau luc léger",
     "pompes",
@@ -929,55 +929,50 @@ colonnes_tests = [
     "niveau tractions",
 ]
 
-# --- Sélection des agents incomplets ---
-conditions = (df_filtered[colonnes_tests].isna()) | (df_filtered[colonnes_tests] == 0)
-agents_incomplets = df_filtered[conditions.any(axis=1)].copy()
-
-
-# --- Déterminer les tests manquants ou nuls pour chaque agent ---
-def lister_tests_manquants_ou_zero(row):
-    return [col for col in colonnes_tests if pd.isna(row[col]) or row[col] == 0]
-
-
-agents_incomplets["tests_manquants_ou_zero"] = agents_incomplets.apply(
-    lister_tests_manquants_ou_zero, axis=1
+colonnes_a_surveiller = st.multiselect(
+    "🧪 Sélectionnez les tests à surveiller :",
+    options=colonnes_disponibles,
+    default=colonnes_disponibles,
 )
 
-# --- Colonnes à afficher ---
-colonnes_affichage = [
-    "matricule",
-    "nom",
-    "prenom",
-    "sexe",
-    "cie",
-    "ut",
-    "tests_manquants_ou_zero",
-]
-colonnes_presentes = [
-    col for col in colonnes_affichage if col in agents_incomplets.columns
-]
-
-# --- Affichage du tableau ---
-table_resultats_vides = agents_incomplets[colonnes_presentes].sort_values(
-    by="matricule"
-)
-
-if table_resultats_vides.empty:
-    st.success(
-        "✅ Aucun agent avec des résultats manquants ou nuls dans les tests physiques."
+if colonnes_a_surveiller:
+    # --- Filtrer les agents avec au moins une valeur manquante ou nulle ---
+    conditions = (df_filtered[colonnes_a_surveiller].isna()) | (
+        df_filtered[colonnes_a_surveiller] == 0
     )
+    agents_incomplets = df_filtered[conditions.any(axis=1)].copy()
+
+    # --- Colonnes à afficher ---
+    colonnes_infos = ["matricule", "nom", "prenom", "sexe", "cie", "ut"]
+    colonnes_presentes = [
+        col for col in colonnes_infos if col in agents_incomplets.columns
+    ]
+    colonnes_finales = colonnes_presentes + colonnes_a_surveiller
+
+    table_finale = agents_incomplets[colonnes_finales].sort_values(by="matricule")
+    table_finale["matricule"] = table_finale["matricule"].astype(str).str.strip()
+
+    if table_finale.empty:
+        st.success(
+            "✅ Aucun agent avec des résultats manquants ou nuls dans les tests sélectionnés."
+        )
+    else:
+        st.write(f"{len(table_finale)} agents concernés :")
+        st.dataframe(table_finale.reset_index(drop=True), use_container_width=True)
+
+        # --- Export CSV ---
+        csv_export = table_finale.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "📥 Télécharger le tableau structuré (CSV)",
+            data=csv_export,
+            file_name="agents_incomplets_spp_structures.csv",
+            mime="text/csv",
+        )
 else:
-    st.write(f"{len(table_resultats_vides)} agents concernés :")
-    st.dataframe(table_resultats_vides.reset_index(drop=True))
-
-    # --- Export CSV ---
-    csv_incomplets = table_resultats_vides.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        "📥 Télécharger cette liste au format CSV",
-        data=csv_incomplets,
-        file_name="agents_resultats_incomplets_spp.csv",
-        mime="text/csv",
+    st.info(
+        "Veuillez sélectionner au moins un test pour vérifier les résultats manquants."
     )
+
 
 image_path = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "carte_j.jpeg")
