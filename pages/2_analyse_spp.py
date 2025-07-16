@@ -11,7 +11,7 @@ import matplotlib.image as mpimg
 @st.cache_data()
 def load_data():
     data_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "spp.csv")
+        os.path.join(os.path.dirname(__file__), "..", "spp_final.csv")
     )
 
     df = pd.read_csv(data_path)
@@ -24,14 +24,14 @@ def load_data():
         "poids",
         "taille",
         "imc",
-        "luc léger",
+        "resul ll",
         "tension artérielle systol",
         "tension artérielle diastol",
     ]
     for col in cols_to_fix:
         if col in df.columns:
             df[col] = df[col].astype(str).str.replace(",", ".").astype(float)
-    df.loc[df["luc léger"] == 0, "niveau luc léger"] = 0
+    df.loc[df["resul ll"] == 0, "niv ll"] = 0
 
     return df
 
@@ -89,11 +89,11 @@ df.loc[(df["taille"] <= 100) | (df["taille"] > 250), "taille"] = None
 df["taille"] = df["taille"] / 100
 
 # Conversion propre
-df["luc léger"] = df["luc léger"].astype(str).str.replace(",", ".").astype(float)
+df["resul ll"] = df["resul ll"].astype(str).str.replace(",", ".").astype(float)
 
 # Correction des erreurs de saisie (ex : 93 → 9.3)
-df.loc[df["luc léger"] > 20, "luc léger"] = df["luc léger"] / 10
-df["luc_leger_arrondi"] = df["luc léger"].round().astype("Int64")
+df.loc[df["resul ll"] > 20, "resul ll"] = df["resul ll"] / 10
+df["luc_leger_arrondi"] = df["resul ll"].round().astype("Int64")
 
 palier_to_vitesse = {
     0: 8.0,
@@ -114,17 +114,19 @@ palier_to_vitesse = {
     15: 15.5,
     16: 16.0,
 }
-# Convertir sexe en numérique
-df["sexe_num"] = df["sexe"].str.upper().map(lambda x: 1 if x == "M" else 0).fillna(0)
+# Convertir sexe_spp en numérique
+df["sexe_num"] = (
+    df["sexe_spp"].str.upper().map(lambda x: 1 if x == "M" else 0).fillna(0)
+)
 
 # Convertir palier Luc Léger en vitesse, 0 si NaN
-df["vitesse"] = df["luc léger"].map(palier_to_vitesse).fillna(0)
+df["vitesse"] = df["resul ll"].map(palier_to_vitesse).fillna(0)
 
 # Calcul VO2max de la formule avec âge, sexe et vitesse
 df["vo2max"] = (
     31.025
     + 3.238 * df["vitesse"]
-    - 3.248 * df["age"].fillna(0)
+    - 3.248 * df["age_pro"].fillna(0)
     + 6.318 * df["sexe_num"]
 )
 df["vo2max"] = df["vo2max"].clip(lower=0)
@@ -203,7 +205,7 @@ st.sidebar.header("Filtres dynamiques")
 cie = st.sidebar.multiselect("Cie:", df["cie"].dropna().unique())
 ut = st.sidebar.multiselect("UT:", df["ut"].dropna().unique())
 sexe_options = st.sidebar.multiselect(
-    "sexe :", df["sexe"].dropna().unique(), default=df["sexe"].dropna().unique()
+    "sexe :", df["sexe_pro"].dropna().unique(), default=df["sexe_pro"].dropna().unique()
 )
 st.sidebar.markdown("**Abtitude générale**")
 aptitude = st.sidebar.multiselect(
@@ -350,16 +352,14 @@ df_filtered = df_filtered[
     & (df_filtered["vo2max_leger"].fillna(0) <= vo2l_max)
 ]
 
-df_filtered["couleur_luc"] = df_filtered["niveau luc léger"].apply(niveau_to_couleur)
-df_filtered["couleur_pompes"] = df_filtered["niveau pompes"].apply(niveau_to_couleur)
-df_filtered["couleur_tractions"] = df_filtered["niveau tractions"].apply(
-    niveau_to_couleur
-)
+df_filtered["couleur_luc"] = df_filtered["niv ll"].apply(niveau_to_couleur)
+df_filtered["couleur_pompes"] = df_filtered["niv pompes"].apply(niveau_to_couleur)
+df_filtered["couleur_tractions"] = df_filtered["niv tractions"].apply(niveau_to_couleur)
 df_filtered["score_moyen"] = df_filtered[
-    ["niveau luc léger", "niveau pompes", "niveau tractions"]
+    ["niv ll", "niv pompes", "niv tractions"]
 ].mean(axis=1)
 df_filtered["couleur_globale"] = df_filtered["score_moyen"].apply(score_to_couleur)
-df_filtered["tranche_age"] = df_filtered["age"].apply(age_to_categorie)
+df_filtered["tranche_age"] = df_filtered["age_pro"].apply(age_to_categorie)
 
 if "périmètre abdominal" in df_filtered.columns:
     df_filtered = df_filtered[
@@ -371,19 +371,19 @@ if luc_leger_categories:
     filtres_luc = []
     for cat in luc_leger_categories:
         if cat == "0":
-            filtres_luc.append(df_filtered["luc léger"] == 0)
+            filtres_luc.append(df_filtered["resul ll"] == 0)
         elif cat == "1":
-            filtres_luc.append(df_filtered["luc léger"] == 1)
+            filtres_luc.append(df_filtered["resul ll"] == 1)
         elif cat == "2":
-            filtres_luc.append(df_filtered["luc léger"] == 2)
+            filtres_luc.append(df_filtered["resul ll"] == 2)
         elif cat == "3":
-            filtres_luc.append(df_filtered["luc léger"] == 3)
+            filtres_luc.append(df_filtered["resul ll"] == 3)
         elif cat == "4":
-            filtres_luc.append(df_filtered["luc léger"] == 4)
+            filtres_luc.append(df_filtered["resul ll"] == 4)
         elif cat == "5":
-            filtres_luc.append(df_filtered["luc léger"] == 5)
+            filtres_luc.append(df_filtered["resul ll"] == 5)
         elif cat == "plus de 6":
-            filtres_luc.append(df_filtered["luc léger"] >= 6)
+            filtres_luc.append(df_filtered["resul ll"] >= 6)
 
     if filtres_luc:
         df_filtered = df_filtered[pd.concat(filtres_luc, axis=1).any(axis=1)]
@@ -407,7 +407,7 @@ df_filtered = df_filtered[
 
 
 if sexe_options:
-    df_filtered = df_filtered[df_filtered["sexe"].isin(sexe_options)]
+    df_filtered = df_filtered[df_filtered["sexe_spp"].isin(sexe_options)]
 
 
 # Application du filtre imc par classe
@@ -442,10 +442,10 @@ st.subheader("Statistiques Globales sur les Données Filtrées")
 st.write(f"Nombre d'individus: {df_filtered.shape[0]}")
 
 
-st.subheader("Distribution de l’imc empilée selon le niveau luc léger")
+st.subheader("Distribution de l’imc empilée selon le niv ll")
 
-if "imc" in df_filtered.columns and "niveau luc léger" in df_filtered.columns:
-    df_imc = df_filtered[["imc", "niveau luc léger"]].dropna()
+if "imc" in df_filtered.columns and "niv ll" in df_filtered.columns:
+    df_imc = df_filtered[["imc", "niv ll"]].dropna()
 
     # Définir les bins
     bins = np.histogram_bin_edges(df_imc["imc"], bins=20)
@@ -455,9 +455,7 @@ if "imc" in df_filtered.columns and "niveau luc léger" in df_filtered.columns:
     niveaux = [1, 2, 3]
     couleurs = {1: "red", 2: "orange", 3: "green"}
     bar_data = {
-        niv: np.histogram(df_imc[df_imc["niveau luc léger"] == niv]["imc"], bins=bins)[
-            0
-        ]
+        niv: np.histogram(df_imc[df_imc["niv ll"] == niv]["imc"], bins=bins)[0]
         for niv in niveaux
     }
 
@@ -476,10 +474,10 @@ if "imc" in df_filtered.columns and "niveau luc léger" in df_filtered.columns:
         )
         bottom += bar_data[niv]
 
-    ax.set_title("Distribution empilée de l’imc par niveau luc léger")
+    ax.set_title("Distribution empilée de l’imc par niv ll")
     ax.set_xlabel("imc")
     ax.set_ylabel("Nombre d’individus")
-    ax.legend(title="niveau luc léger")
+    ax.legend(title="niv ll")
     st.pyplot(fig)
 else:
     st.info(
@@ -488,7 +486,7 @@ else:
 
 st.subheader("Distribution du Palier Luc Léger par Catégorie d'IMC")
 
-if "luc léger" in df_filtered.columns and "imc" in df_filtered.columns:
+if "resul ll" in df_filtered.columns and "imc" in df_filtered.columns:
 
     def classify_imc(imc):
         if pd.isna(imc):
@@ -526,7 +524,7 @@ if "luc léger" in df_filtered.columns and "imc" in df_filtered.columns:
         "Inconnu": "gray",
     }
 
-    df_viz = df_filtered[["luc léger", "imc"]].dropna()
+    df_viz = df_filtered[["resul ll", "imc"]].dropna()
     if df_viz.empty:
         st.info("Aucune donnée disponible pour cette combinaison de filtres.")
     else:
@@ -537,7 +535,7 @@ if "luc léger" in df_filtered.columns and "imc" in df_filtered.columns:
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.histplot(
             data=df_viz,
-            x="luc léger",
+            x="resul ll",
             hue="imc_cat",
             multiple="stack",
             palette=palette,
@@ -567,16 +565,16 @@ if "luc léger" in df_filtered.columns and "imc" in df_filtered.columns:
 
         st.pyplot(fig)
 else:
-    st.warning("Les colonnes nécessaires 'luc léger' et 'imc' sont manquantes.")
+    st.warning("Les colonnes nécessaires 'resul ll' et 'imc' sont manquantes.")
 
 
 st.subheader("Distribution du Tour de Taille selon le Sexe et les Normes de Santé")
 
-if "périmètre abdominal" in df_filtered.columns and "sexe" in df_filtered.columns:
-    df_tour = df_filtered[["périmètre abdominal", "sexe"]].dropna()
+if "périmètre abdominal" in df_filtered.columns and "sexe_spp" in df_filtered.columns:
+    df_tour = df_filtered[["périmètre abdominal", "sexe_spp"]].dropna()
 
     def couleur_tour(row):
-        sexe = str(row["sexe"]).lower()
+        sexe = str(row["sexe_spp"]).lower()
         tour = row["périmètre abdominal"]
         if sexe == "m":
             return "green" if tour < 94 else "red"
@@ -607,7 +605,7 @@ if "périmètre abdominal" in df_filtered.columns and "sexe" in df_filtered.colu
     st.pyplot(fig)
 else:
     st.warning(
-        "La colonne 'périmètre abdominal' ou 'sexe' est manquante dans les données."
+        "La colonne 'périmètre abdominal' ou 'sexe_spp' est manquante dans les données."
     )
 st.subheader("Distribution de la VO2max")
 if "vo2max" in df_filtered.columns and not df_filtered["vo2max"].dropna().empty:
@@ -621,15 +619,15 @@ if "vo2max" in df_filtered.columns and not df_filtered["vo2max"].dropna().empty:
 
 st.subheader("Nuage de points : VO2max en fonction de l'âge")
 
-if "vo2max" in df_filtered.columns and "age" in df_filtered.columns:
-    df_vo2_age = df_filtered[["vo2max", "age"]].dropna()
+if "vo2max" in df_filtered.columns and "age_pro" in df_filtered.columns:
+    df_vo2_age = df_filtered[["vo2max", "age_pro"]].dropna()
 
     if not df_vo2_age.empty:
         fig, ax = plt.subplots(figsize=(10, 6))
-        sns.scatterplot(data=df_vo2_age, x="age", y="vo2max", alpha=0.6)
+        sns.scatterplot(data=df_vo2_age, x="age_pro", y="vo2max", alpha=0.6)
         sns.regplot(
             data=df_vo2_age,
-            x="age",
+            x="age_pro",
             y="vo2max",
             scatter=False,
             color="red",
@@ -643,20 +641,20 @@ if "vo2max" in df_filtered.columns and "age" in df_filtered.columns:
     else:
         st.info("Aucune donnée VO2max et âge disponible pour l'affichage.")
 else:
-    st.warning("Les colonnes nécessaires 'vo2max' et 'age' sont manquantes.")
+    st.warning("Les colonnes nécessaires 'vo2max' et 'age_pro' sont manquantes.")
 
 
 st.subheader("Relation entre l'âge et la VO2max (Formule de Léger 1988)")
 
-if "vo2max_leger" in df_filtered.columns and "age" in df_filtered.columns:
-    df_vo2_leger_age = df_filtered[["vo2max_leger", "age"]].dropna()
+if "vo2max_leger" in df_filtered.columns and "age_pro" in df_filtered.columns:
+    df_vo2_leger_age = df_filtered[["vo2max_leger", "age_pro"]].dropna()
 
     if not df_vo2_leger_age.empty:
         fig, ax = plt.subplots(figsize=(10, 6))
-        sns.scatterplot(data=df_vo2_leger_age, x="age", y="vo2max_leger", alpha=0.6)
+        sns.scatterplot(data=df_vo2_leger_age, x="age_pro", y="vo2max_leger", alpha=0.6)
         sns.regplot(
             data=df_vo2_leger_age,
-            x="age",
+            x="age_pro",
             y="vo2max_leger",
             scatter=False,
             color="green",
@@ -670,7 +668,7 @@ if "vo2max_leger" in df_filtered.columns and "age" in df_filtered.columns:
     else:
         st.info("Aucune donnée disponible pour VO2max (Léger) et âge.")
 else:
-    st.warning("Les colonnes 'vo2max_leger' et 'age' sont manquantes.")
+    st.warning("Les colonnes 'vo2max_leger' et 'age_pro' sont manquantes.")
 st.subheader("Distribution de la VO2max - Formule de Léger (1988)")
 
 if (
@@ -703,7 +701,7 @@ for feature in features:
     else:
         st.info(f"Aucune donnée disponible pour {feature.upper()}.")
 
-phys_tests = ["luc léger", "pompes", "tractions"]
+phys_tests = ["resul ll", "resul pompes", "resul tractions"]
 for test in phys_tests:
     st.subheader(f"{test.replace('_', ' ').title()} par Cie")
     if not df_filtered.empty and test in df_filtered.columns:
@@ -717,14 +715,14 @@ for test in phys_tests:
 
 st.subheader("Relation entre l'âge et le palier Luc Léger")
 
-if "age" in df_filtered.columns and "luc léger" in df_filtered.columns:
-    df_age_luc = df_filtered[["age", "luc léger"]].dropna()
+if "age_pro" in df_filtered.columns and "resul ll" in df_filtered.columns:
+    df_age_luc = df_filtered[["age_pro", "resul ll"]].dropna()
     if not df_age_luc.empty:
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.regplot(
             data=df_age_luc,
-            x="age",
-            y="luc léger",
+            x="age_pro",
+            y="resul ll",
             scatter_kws={"alpha": 0.5},
             line_kws={"color": "red"},
         )
@@ -805,7 +803,7 @@ if (
     fig, ax = plt.subplots(figsize=(10, 6))
     sns.histplot(
         df_filtered,
-        x="luc léger",
+        x="resul ll",
         hue="aptitude générale",
         multiple="stack",
         bins=15,
@@ -820,7 +818,7 @@ if (
     fig, ax = plt.subplots(figsize=(10, 6))
     sns.histplot(
         df_filtered,
-        x="luc léger",
+        x="resul ll",
         hue="incendie et port de l'ari toutes missions",
         multiple="stack",
         bins=15,
@@ -840,7 +838,7 @@ fig, ax = plt.subplots(figsize=(12, 6))
 sns.boxplot(
     data=df_filtered,
     x="aptitude générale",
-    y="luc léger",
+    y="resul ll",
     hue="incendie et port de l'ari toutes missions",
     palette="pastel",
 )
@@ -855,17 +853,17 @@ st.subheader("🔗 Corrélations avec le Palier luc léger")
 
 # Sélection des colonnes numériques pertinentes
 cols_corr = [
-    "luc léger",
+    "resul ll",
     "imc",
     "poids",
     "taille",
     "tension artérielle systol",
     "tension artérielle diastol",
-    "pompes",
-    "tractions",
-    "niveau luc léger",
-    "niveau pompes",
-    "niveau tractions",
+    "resul pompes",
+    "resul tractions",
+    "niv ll",
+    "niv pompes",
+    "niv tractions",
     "périmètre abdominal",
 ]
 
@@ -892,7 +890,7 @@ st.pyplot(fig)
 
 st.subheader("🎯 Répartition des niveaux ICP - SPP (Filtres appliqués)")
 
-for group_col in ["cie", "ut", "sexe", "tranche_age"]:
+for group_col in ["cie", "ut", "sexe_spp", "tranche_age"]:
     if group_col in df_filtered.columns:
         st.markdown(f"#### Répartition par {group_col}")
         tab = (
@@ -921,12 +919,12 @@ if "matricule" in df_filtered.columns:
 
 # --- Sélection des colonnes à surveiller ---
 colonnes_disponibles = [
-    "luc léger",
-    "niveau luc léger",
-    "pompes",
-    "niveau pompes",
-    "tractions",
-    "niveau tractions",
+    "resul ll",
+    "niv ll",
+    "resul pompes",
+    "niv pompes",
+    "resul tractions",
+    "niv tractions",
 ]
 
 colonnes_a_surveiller = st.multiselect(
@@ -943,7 +941,7 @@ if colonnes_a_surveiller:
     agents_incomplets = df_filtered[conditions.any(axis=1)].copy()
 
     # --- Colonnes à afficher ---
-    colonnes_infos = ["matricule", "nom", "prenom", "sexe", "cie", "ut"]
+    colonnes_infos = ["matricule", "nom", "prenom", "sexe_spp", "cie", "ut"]
     colonnes_presentes = [
         col for col in colonnes_infos if col in agents_incomplets.columns
     ]
