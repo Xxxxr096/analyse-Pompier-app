@@ -598,11 +598,9 @@ st.subheader("Distribution du Tour de Taille selon le sexe et les Normes de Sant
 
 if (
     "périmètre abdominal" in df_filtered.columns
-    and "sexe_volontaire_volontaire_volontaire_volontaire" in df_filtered.columns
+    and "sexe_volontaire" in df_filtered.columns
 ):
-    df_tour = df_filtered[
-        ["périmètre abdominal", "sexe_volontaire_volontaire_volontaire_volontaire"]
-    ].dropna()
+    df_tour = df_filtered[["périmètre abdominal", "sexe_volontaire"]].dropna()
 
     def couleur_tour(row):
         sexe_volontaire = str(row["sexe_volontaire"]).lower()
@@ -636,7 +634,7 @@ if (
     st.pyplot(fig)
 else:
     st.warning(
-        "La colonne 'périmètre abdominal' ou 'sexe_volontaire_volontaire_volontaire' est manquante dans les données."
+        "La colonne 'périmètre abdominal' ou 'sexe_volontaire' est manquante dans les données."
     )
 st.subheader("Distribution de la VO2max")
 if "vo2max" in df_filtered.columns and not df_filtered["vo2max"].dropna().empty:
