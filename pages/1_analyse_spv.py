@@ -463,7 +463,7 @@ st.subheader("Statistiques Globales sur les Données Filtrées")
 st.write(f"Nombre d'individus: {df_filtered.shape[0]}")
 
 
-st.subheader("Distribution de l’imc empilée selon le niv ll")
+st.subheader("Distribution de l’imc empilée selon le niveau Luc léger")
 
 if "imc" in df_filtered.columns and "niv ll" in df_filtered.columns:
     df_imc = df_filtered[["imc", "niv ll"]].dropna()
@@ -495,7 +495,7 @@ if "imc" in df_filtered.columns and "niv ll" in df_filtered.columns:
         )
         bottom += bar_data[niv]
 
-    ax.set_title("Distribution empilée de l’imc par niv ll")
+    ax.set_title("Distribution empilée de l’imc par niveau Luc Léger")
     ax.set_xlabel("imc")
     ax.set_ylabel("Nombre d’individus")
     ax.legend(title="niv ll")
