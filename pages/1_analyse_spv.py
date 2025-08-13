@@ -949,6 +949,8 @@ colonnes_disponibles = [
     "niv pompes",
     "resul tractions",
     "niv tractions",
+    "resul souplesse",
+    "resul killy",
 ]
 
 colonnes_a_surveiller = st.multiselect(
@@ -986,8 +988,30 @@ if colonnes_a_surveiller:
             "✅ Aucun agent avec des résultats manquants ou nuls dans les tests sélectionnés."
         )
     else:
-        st.write(f"{len(table_finale)} agents concernés :")
+        total_agents = len(df_filtered)
+        nb_incomplets = len(table_finale)
+        pct_incomplets = round(100 * nb_incomplets / total_agents, 1)
+
+        st.write(
+            f"**{nb_incomplets} agents concernés** sur {total_agents} filtrés "
+            f"({pct_incomplets} %)."
+        )
+
         st.dataframe(table_finale.reset_index(drop=True), use_container_width=True)
+
+        # --- 📊 Calcul du % de tests manquants/nuls ---
+        pourcentages_manquants = {}
+        for col in colonnes_a_surveiller:
+            nb_manquants = (df_filtered[col].isna() | (df_filtered[col] == 0)).sum()
+            pourcentages_manquants[col] = round(100 * nb_manquants / total_agents, 1)
+
+        # Création d'un DataFrame pour affichage clair
+        df_pourcentages = pd.DataFrame.from_dict(
+            pourcentages_manquants, orient="index", columns=["% manquants/nuls"]
+        ).sort_values(by="% manquants/nuls", ascending=False)
+
+        st.subheader("📊 Pourcentage de valeurs manquantes ou nulles par test")
+        st.table(df_pourcentages)
 
         # Export CSV
         csv_incomplets = table_finale.to_csv(index=False).encode("utf-8")
@@ -1051,8 +1075,8 @@ ut_mapping = {
     "UT SARRE-UNION": "SAVERNE",
     "UT SCHIRMECK": "SELESTAT",
     "UT SELTZ": "WISSEMBOURG",
-    "UT SOUFFLENHEIM": "BISCHWILLER",
-    "UT SOULTZ-SOUS-FORÊT": "WISSEMBOURG",
+    "UT SOUFFLENHEIM": "SOUFFLENHEIM",
+    "UT SOULTZ-SOUS-FORÊT": "HATTEN",
     "UT SUNDHOUSE": "SUNDHOUSE",
     "UT TRUCHTERSHEIM": "STRASBOURG-2",
     "UT URMATT": "MOLSHEIM",
@@ -1168,7 +1192,7 @@ offsets = {
     "STRASBOURG OUEST": (-20, 10),
     "STRASBOURG NORD": (0, -25),
 }
-# --- Carte IMC + Effectif par territoire (CIS) ---
+
 
 # --- Carte IMC + Effectif par territoire (CIS) ---
 
