@@ -1000,7 +1000,6 @@ else:
 
 # =============== Carte UT (jaune) + CIS (rouge) — SANS UPLOAD ===============
 
-# Chemins des fichiers (adapte ".." si tes fichiers sont dans le même dossier que ce script)
 IMAGE_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "carte_j.jpeg")
 )
@@ -1104,7 +1103,12 @@ else:
 
     agg_ut_ok = agg_ut.dropna(subset=["x_norm", "y_norm"])
     agg_cis_ok = agg_cis.dropna(subset=["x_norm", "y_norm"])
-
+    st.sidebar.markdown("**Affichage sur la carte**")
+    affichage_points = st.sidebar.radio(
+        "Sélectionnez les points à afficher :",
+        ("UT uniquement", "CIS uniquement", "UT + CIS"),
+        index=2,
+    )
     # 5) Afficher la carte
     st.subheader("🗺️ Carte — UT (jaune) et CIS (rouge)")
     if not os.path.exists(IMAGE_PATH):
@@ -1126,74 +1130,76 @@ else:
         ax.axis("off")
 
         # UT = jaune
-        for _, r in agg_ut_ok.iterrows():
-            x = float(r["x_norm"]) * W
-            y = float(r["y_norm"]) * H
-            dx = float(r.get("offset_x", 0))
-            dy = float(r.get("offset_y", 0))
-            ax.plot(
-                x,
-                y,
-                "o",
-                markersize=ms,
-                color="yellow",
-                markeredgecolor="black",
-                markeredgewidth=1.2,
-            )
-            if show_labels:
-                label = f"{r['ut_norm']}\n{int(r['effectif'])} pers"
-                if show_imc and pd.notna(r["imc_moyen"]):
-                    label += f"\nIMC {r['imc_moyen']:.1f}"
-                ax.text(
-                    x + dx,
-                    y + dy,
-                    label,
-                    fontsize=fs,
-                    color="black",
-                    ha="center",
-                    va="center",
-                    bbox=dict(
-                        facecolor="white",
-                        alpha=0.75,
-                        edgecolor="none",
-                        boxstyle="round,pad=0.2",
-                    ),
+        if affichage_points in ("UT uniquement", "UT + CIS"):
+            for _, r in agg_ut_ok.iterrows():
+                x = float(r["x_norm"]) * W
+                y = float(r["y_norm"]) * H
+                dx = float(r.get("offset_x", 0))
+                dy = float(r.get("offset_y", 0))
+                ax.plot(
+                    x,
+                    y,
+                    "o",
+                    markersize=ms,
+                    color="yellow",
+                    markeredgecolor="black",
+                    markeredgewidth=1.2,
                 )
+                if show_labels:
+                    label = f"{r['ut_norm']}\n{int(r['effectif'])} pers"
+                    if show_imc and pd.notna(r["imc_moyen"]):
+                        label += f"\nIMC {r['imc_moyen']:.1f}"
+                    ax.text(
+                        x + dx,
+                        y + dy,
+                        label,
+                        fontsize=fs,
+                        color="black",
+                        ha="center",
+                        va="center",
+                        bbox=dict(
+                            facecolor="white",
+                            alpha=0.75,
+                            edgecolor="none",
+                            boxstyle="round,pad=0.2",
+                        ),
+                    )
 
         # CIS = rouge
-        for _, r in agg_cis_ok.iterrows():
-            x = float(r["x_norm"]) * W
-            y = float(r["y_norm"]) * H
-            dx = float(r.get("offset_x", 0))
-            dy = float(r.get("offset_y", 0))
-            ax.plot(
-                x,
-                y,
-                "o",
-                markersize=ms,
-                color="red",
-                markeredgecolor="white",
-                markeredgewidth=1.2,
-            )
-            if show_labels:
-                label = f"{r['cis_norm']}\n{int(r['effectif'])} pers"
-                if show_imc and pd.notna(r["imc_moyen"]):
-                    label += f"\nIMC {r['imc_moyen']:.1f}"
-                ax.text(
-                    x + dx,
-                    y + dy,
-                    label,
-                    fontsize=fs,
-                    color="white",
-                    ha="center",
-                    va="center",
-                    bbox=dict(
-                        facecolor="black",
-                        alpha=0.75,
-                        edgecolor="none",
-                        boxstyle="round,pad=0.2",
-                    ),
+        if affichage_points in ("CIS uniquement", "UT + CIS"):
+            for _, r in agg_cis_ok.iterrows():
+                x = float(r["x_norm"]) * W
+                y = float(r["y_norm"]) * H
+                dx = float(r.get("offset_x", 0))
+                dy = float(r.get("offset_y", 0))
+                ax.plot(
+                    x,
+                    y,
+                    "o",
+                    markersize=ms,
+                    color="red",
+                    markeredgecolor="white",
+                    markeredgewidth=1.2,
                 )
+                if show_labels:
+                    label = f"{r['cis_norm']}\n{int(r['effectif'])} pers"
+                    if show_imc and pd.notna(r["imc_moyen"]):
+                        label += f"\nIMC {r['imc_moyen']:.1f}"
+                    ax.text(
+                        x + dx,
+                        y + dy,
+                        label,
+                        fontsize=fs,
+                        color="white",
+                        ha="center",
+                        va="center",
+                        bbox=dict(
+                            facecolor="black",
+                            alpha=0.75,
+                            edgecolor="none",
+                            boxstyle="round,pad=0.2",
+                        ),
+                    )
 
         st.pyplot(fig, use_container_width=True)
 

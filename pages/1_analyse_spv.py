@@ -5,6 +5,7 @@ import seaborn as sns
 import numpy as np
 import os
 import matplotlib.image as mpimg
+import unicodedata
 
 
 # --- Chargement des données ---
@@ -1035,263 +1036,222 @@ st.markdown(
 - Visualisez clairement la répartition des niveaux de luc léger par unité ou compagnie
 """
 )
-
-# ------------ NEW MAPP ------------------ #
-image_path = os.path.abspath(
+IMAGE_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "carte_j.jpeg")
 )
-ut_mapping = {
-    "UT STRASBOURG OUEST": "STRASBOURG OUEST",
-    "UT STRASBOURG NORD": "STRASBOURG NORD",
-    "UT STRASBOURG FINKWI": "FINKWI",
-    "UT STRASBOURG SUD": "STRASBOURG SUD",
-    "UT HAGUENAU": "HAGUENAU",
-    "UT MOLSHEIM": "MOLSHEIM",
-    "UT INGWILLER": "INGWILLER",
-    "UT OBERNAI": "OBERNAI",
-    "UT LINGOLSHEIM": "LINGOLSHEIM",
-    "UT BISCHWILLER": "BISCHWILLER",
-    "UT SÉLESTAT": "SELESTAT",
-    "UT SAVERNE": "SAVERNE",
-    "UT BRUMATH": "BRUMATH",
-    "UT ERSTEIN": "ERSTEIN",
-    "UT WISSEMBOURG": "WISSEMBOURG",
-    "UT BOUXWILLER": "BOUXWILLER",
-    "UT BENFELD": "ERSTEIN",
-    "UT BOOFZHEIM": "ERSTEIN",
-    "UT BARR": "OBERNAI",
-    "UT DRULINGEN": "SAVERNE",
-    "UT DIEMERINGEN": "SAVERNE",
-    "UT FEGERSHEIM": "ILLKIRCH-GRAFFENSTAD",
-    "UT GAMBSHEIM": "BRUMATH",
-    "UT HOENHEIM": "HOENHEIM",
-    "UT HOCHFELDEN": "BOUXWILLER",
-    "UT LAUTERBOURG": "WISSEMBOURG",
-    "UT MARCKOLSHEIM": "SELESTAT",
-    "UT MARMOUTIER": "SAVERNE",
-    "UT NIEDERBRONN-LES-B": "REICHSHOFFEN",
-    "UT PETERSBACH": "SAVERNE",
-    "UT SAALES": "SELESTAT",
-    "UT SARRE-UNION": "SAVERNE",
-    "UT SCHIRMECK": "SELESTAT",
-    "UT SELTZ": "WISSEMBOURG",
-    "UT SOUFFLENHEIM": "SOUFFLENHEIM",
-    "UT SOULTZ-SOUS-FORÊT": "HATTEN",
-    "UT SUNDHOUSE": "SUNDHOUSE",
-    "UT TRUCHTERSHEIM": "STRASBOURG-2",
-    "UT URMATT": "MOLSHEIM",
-    "UT VAL-DE-MODER": "BOUXWILLER",
-    "UT VENDENHEIM": "SCHILTIGHEIM",
-    "UT VILLE": "STRASBOURG-1",
-    "UT WASSELONNE": "MOLSHEIM",
-    "UT WINGEN-SUR-MODER": "INGWILLER",
-    "UT WOERTH": "WISSEMBOURG",
-    "UT LEMBACH": "WISSEMBOURG",
-}
-
-coordonnees_territoires = {
-    "ALTECKENDORF": (0.5168, 0.4031),
-    "BALDENHEIM": (0.5106, 0.8452),
-    "BARR": (0.4351, 0.7152),
-    "BERGBIETEN": (0.4234, 0.5795),
-    "BETSCHDORF": (0.7433, 0.3089),
-    "BISCHHEIM": (0.6354, 0.5411),
-    "BISCHWILLER": (0.7073, 0.4134),
-    "BRUMATH": (0.6078, 0.4458),
-    "DAMBACH-LA-VILLE": (0.4170, 0.7821),
-    "DOSSENHEIM S/ZINSEL": (0.3346, 0.3912),
-    "DRULINGEN": (0.2038, 0.3511),
-    "DRUSENHEIM": (0.7816, 0.4182),
-    "DURRENBACH": (0.6354, 0.3111),
-    "EBERSHEIM": (0.4744, 0.7963),
-    "EBERSMUNSTER": (0.5010, 0.8008),
-    "ERGERSHEIM": (0.4862, 0.5762),
-    "FEGERSHEIM": (0.6132, 0.6423),
-    "FINKWILLER": (0.6446, 0.5725),
-    "GAMBSHEIM": (0.7456, 0.4707),
-    "GEISPOLSHEIM": (0.5719, 0.6233),
-    "GRIES": (0.6828, 0.4285),
-    "GRIESHEIM-SUR-SOUFFE": (0.6293, 0.6239),
-    "HAGUENAU": (0.6522, 0.3755),
-    "HATTEN": (0.8183, 0.3100),
-    "HILSENHEIM": (0.5297, 0.8061),
-    "HOCHFELDEN": (0.4984, 0.4301),
-    "HOENHEIM": (0.6530, 0.5275),
-    "ILLKIRCH-GRAFFENSTAD": (0.6308, 0.6260),
-    "INGWILLER": (0.4266, 0.3439),
-    "LA SOUFFEL": (0.6105, 0.5325),
-    "LINGOLSHEIM": (0.5956, 0.5892),
-    "LIPSHEIM": (0.5826, 0.6466),
-    "MARCKOLSHEIM": (0.0, 0.0),
-    "MERTZWILLER": (0.0, 0.0),
-    "MITTELHAUSBERGEN": (0.0, 0.0),
-    "MOLSHEIM": (0.4693, 0.6152),
-    "MONSWILLER": (0.3591, 0.4415),
-    "MUNDOLSHEIM": (0.6163, 0.5221),
-    "MUSSIG": (0.4957, 0.8640),
-    "MUTTERSHOLTZ": (0.5010, 0.8272),
-    "MUTZIG": (0.4242, 0.6114),
-    "NIEDERBRONN LES BAIN": (0.5458, 0.2781),
-    "NORDHOUSE": (0.5941, 0.6758),
-    "OBERHOFFEN SUR MODER": (0.7333, 0.4009),
-    "STRASBOURG SUD": (0.6469, 0.6049),
-    "STRASBOURG OUEST": (0.6293, 0.5627),
-    "STRASBOURG NORD": (0.6614, 0.5438),
-    "SELESTAT": (0.4542, 0.8415),
-    "OBERNAI": (0.4654, 0.6775),
-    "REICHSHOFFEN": (0.5592, 0.2926),
-    "ERSTEIN": (0.5930, 0.7058),
-    "SCHILTIGHEIM": (0.6393, 0.5465),
-    "SUNDHOUSE": (0.5630, 0.8411),
-    "SAVERNE": (0.3515, 0.4523),
-}
-
-offsets = {
-    "ALTECKENDORF": (0, 3),
-    "BALDENHEIM": (0, 5),
-    "BARR": (0, -3),
-    "BERGBIETEN": (0, -2),
-    "BETSCHDORF": (0, -9),
-    "BISCHHEIM": (20, -10),
-    "BISCHWILLER": (0, -1),
-    "BRUMATH": (10, 10),
-    "DAMBACH-LA-VILLE": (0, 9),
-    "DOSSENHEIM S/ZINSEL": (0, 4),
-    "DRULINGEN": (0, 0),
-    "DRUSENHEIM": (0, 2),
-    "DURRENBACH": (0, 7),
-    "EBERSHEIM": (0, -8),
-    "EBERSMUNSTER": (0, 8),
-    "ERGERSHEIM": (0, -6),
-    "FEGERSHEIM": (10, -10),
-    "FINKWILLER": (-25, 10),
-    "GAMBSHEIM": (0, -2),
-    "GEISPOLSHEIM": (15, 15),
-    "GRIES": (-15, 10),
-    "GRIESHEIM-SUR-SOUFFE": (10, 10),
-    "HAGUENAU": (0, 3),
-    "HATTEN": (0, -7),
-    "HILSENHEIM": (0, -3),
-    "HOCHFELDEN": (0, -10),
-    "HOENHEIM": (-20, 15),
-    "ILLKIRCH-GRAFFENSTAD": (20, 20),
-    "INGWILLER": (0, 3),
-    "LA SOUFFEL": (0, 1),
-    "LINGOLSHEIM": (-20, -10),
-    "LIPSHEIM": (0, 8),
-    "MOLSHEIM": (-15, -20),
-    "MONSWILLER": (0, 5),
-    "MUNDOLSHEIM": (10, -20),
-    "MUSSIG": (0, 7),
-    "MUTTERSHOLTZ": (0, -3),
-    "MUTZIG": (0, 5),
-    "NIEDERBRONN LES BAIN": (0, 7),
-    "NORDHOUSE": (0, 4),
-    "OBERHOFFEN SUR MODER": (0, -8),
-    "STRASBOURG SUD": (0, 25),
-    "STRASBOURG OUEST": (-20, 10),
-    "STRASBOURG NORD": (0, -25),
-}
+UT_REF_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ut.csv"))
+CIS_REF_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "cis.csv"))
 
 
-# --- Carte IMC + Effectif par territoire (CIS) ---
-
-st.subheader("🗺️ Carte des effectifs et de l’IMC moyen par territoire")
-
-if "ut_x" in df.columns and "imc" in df.columns:
-    # --- Normaliser les noms pour faire correspondre avec le mapping ---
-    df["ut_x_normalise"] = df["ut_x"].astype(str).str.upper().str.strip()
-
-    # Mapping UT vers noms simplifiés
-    df["cis"] = df["ut_x_normalise"].map(ut_mapping).fillna("INCONNU")
-
-    # Nettoyage de l'IMC
-    df["imc"] = pd.to_numeric(df["imc"], errors="coerce")
-
-    # Agrégation par CIS
-    # Agrégation sur les données filtrées
-    df_filtered["ut_x_normalise"] = (
-        df_filtered["ut_x"].astype(str).str.upper().str.strip()
-    )
-    df_filtered["cis"] = df_filtered["ut_x_normalise"].map(ut_mapping).fillna("INCONNU")
-
-    stats = (
-        df_filtered[df_filtered["cis"] != "INCONNU"]
-        .groupby("cis")
-        .agg(effectif=("cis", "count"), imc_moyen=("imc", "mean"))
-        .reset_index()
+# Petites utilitaires locales (indépendantes du reste du script)
+def _normalise_series(s: pd.Series) -> pd.Series:
+    return (
+        s.astype(str)
+        .apply(
+            lambda x: unicodedata.normalize("NFKD", x)
+            .encode("ascii", "ignore")
+            .decode("ascii")
+        )
+        .str.upper()
+        .str.replace(r"\s+", " ", regex=True)
+        .str.replace("-", " ")
+        .str.strip()
+        .replace({"NAN": np.nan})
     )
 
-    if stats.empty:
-        st.warning(
-            "Aucune donnée disponible pour afficher la carte (vérifiez vos filtres)."
+
+def _load_reference(path: str, key_col: str) -> pd.DataFrame:
+    if not os.path.exists(path):
+        st.error(f"Référentiel manquant : {os.path.basename(path)}")
+        return pd.DataFrame(
+            columns=["key_norm", "x_norm", "y_norm", "offset_x", "offset_y", "label"]
         )
-        st.stop()
-
-    # Vérification des noms manquants dans les coordonnées
-    noms_absents = stats.loc[
-        ~stats["cis"].isin(coordonnees_territoires.keys()), "cis"
-    ].unique()
-    if len(noms_absents) > 0:
-        st.warning(
-            f"⚠️ Les territoires suivants n'ont pas de coordonnées et ne seront pas affichés : {', '.join(noms_absents)}"
+    ref = pd.read_csv(path, sep=";")
+    needed = {key_col, "x_norm", "y_norm"}
+    if not needed.issubset(set(ref.columns)):
+        st.error(
+            f"{os.path.basename(path)} doit contenir les colonnes : {key_col}, x_norm, y_norm (offset_x/offset_y optionnels)."
         )
-
-    # Chargement de l'image
-    img = mpimg.imread(image_path)
-    img_height, img_width = img.shape[0], img.shape[1]
-
-    fig, ax = plt.subplots(figsize=(10, 12))
-    ax.imshow(img)
-    ax.axis("off")
-
-    for _, row in stats.iterrows():
-        nom = row["cis"]
-        if nom not in coordonnees_territoires:
-            continue
-
-        x_norm, y_norm = coordonnees_territoires[nom]
-        x = x_norm * img_width
-        y = y_norm * img_height
-
-        x_offset, y_offset = offsets.get(nom, (0, 0))
-
-        # Point rouge avec bord blanc
-        ax.plot(
-            x,
-            y,
-            "o",
-            markersize=8,
-            color="red",
-            markeredgecolor="white",
-            markeredgewidth=1.5,
+        return pd.DataFrame(
+            columns=["key_norm", "x_norm", "y_norm", "offset_x", "offset_y", "label"]
         )
+    ref["key_norm"] = _normalise_series(ref[key_col])
+    ref["label"] = ref[key_col]
+    for c in ("x_norm", "y_norm", "offset_x", "offset_y"):
+        if c not in ref.columns:
+            ref[c] = 0
+        ref[c] = pd.to_numeric(ref[c], errors="coerce").fillna(0.0)
+    return ref[["key_norm", "x_norm", "y_norm", "offset_x", "offset_y", "label"]]
 
-        # Texte avec nom, effectif et IMC
-        ax.text(
-            x + x_offset,
-            y + y_offset,
-            f"{nom}\n{int(row['effectif'])} pers\nIMC {row['imc_moyen']:.1f}",
-            fontsize=7,
-            color="white",
-            ha="center",
-            va="center",
-            bbox=dict(
-                facecolor="black", alpha=0.7, edgecolor="none", boxstyle="round,pad=0.2"
-            ),
-        )
 
-    st.pyplot(fig)
+# 1) Normaliser les colonnes UT / CIS dans df_filtered (déjà construit plus haut)
+df_map = df_filtered.copy()
+df_map.columns = df_map.columns.str.strip().str.lower()
 
+col_ut = next(
+    (c for c in ["ut", "compagnie", "unite_territoriale"] if c in df_map.columns), None
+)
+col_cis = next(
+    (c for c in ["cis", "centre", "centre_cis", "nom_cis"] if c in df_map.columns), None
+)
+
+if not col_ut and not col_cis:
+    st.warning(
+        "Aucune colonne UT/Compagnie ni CIS trouvée dans les données — impossible d’afficher la carte."
+    )
 else:
-    st.warning("Les colonnes 'ut_x' ou 'imc' sont manquantes dans les données.")
+    if col_ut:
+        df_map["ut_norm"] = _normalise_series(df_map[col_ut])
+    else:
+        df_map["ut_norm"] = np.nan
 
+    if col_cis:
+        df_map["cis_norm"] = _normalise_series(df_map[col_cis])
+    else:
+        df_map["cis_norm"] = np.nan
 
-if not df_filtered.empty:
-    csv = df_filtered.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        "📥 Télécharger les données filtrées (CSV)",
-        data=csv,
-        file_name="donnees_filtrees.csv",
-        mime="text/csv",
+    # 2) Charger les référentiels (ut.csv et cis.csv)
+    ref_ut = _load_reference(UT_REF_PATH, "ut")
+    ref_cis = _load_reference(CIS_REF_PATH, "cis")
+
+    # 3) Joindre pour récupérer x_norm / y_norm
+    df_ut = df_map.dropna(subset=["ut_norm"]).merge(
+        ref_ut, left_on="ut_norm", right_on="key_norm", how="left"
     )
+    df_cis = df_map.dropna(subset=["cis_norm"]).merge(
+        ref_cis, left_on="cis_norm", right_on="key_norm", how="left"
+    )
+
+    # 4) Agréger (effectif + IMC moyen si présent)
+    df_ut["imc"] = pd.to_numeric(df_ut.get("imc", np.nan), errors="coerce")
+    df_cis["imc"] = pd.to_numeric(df_cis.get("imc", np.nan), errors="coerce")
+
+    agg_ut = df_ut.groupby(
+        ["ut_norm", "x_norm", "y_norm", "offset_x", "offset_y"],
+        dropna=False,
+        as_index=False,
+    ).agg(effectif=("ut_norm", "count"), imc_moyen=("imc", "mean"))
+    agg_cis = df_cis.groupby(
+        ["cis_norm", "x_norm", "y_norm", "offset_x", "offset_y"],
+        dropna=False,
+        as_index=False,
+    ).agg(effectif=("cis_norm", "count"), imc_moyen=("imc", "mean"))
+
+    agg_ut_ok = agg_ut.dropna(subset=["x_norm", "y_norm"])
+    agg_cis_ok = agg_cis.dropna(subset=["x_norm", "y_norm"])
+    st.sidebar.markdown("**Affichage sur la carte**")
+    affichage_points = st.sidebar.radio(
+        "Sélectionnez les points à afficher :",
+        ("UT uniquement", "CIS uniquement", "UT + CIS"),
+        index=2,
+    )
+    # 5) Afficher la carte
+    st.subheader("🗺️ Carte — UT (jaune) et CIS (rouge)")
+    if not os.path.exists(IMAGE_PATH):
+        st.error(f"Image non trouvée : {IMAGE_PATH}")
+    else:
+        img = mpimg.imread(IMAGE_PATH)
+        H, W = img.shape[0], img.shape[1]
+
+        c1, c2 = st.columns([1, 1])
+        with c1:
+            ms = st.slider("Taille des points", 4, 20, 10)
+            fs = st.slider("Taille du texte", 6, 16, 9)
+        with c2:
+            show_labels = st.checkbox("Afficher les labels", True)
+            show_imc = st.checkbox("Afficher l'IMC moyen", False)
+
+        fig, ax = plt.subplots(figsize=(10, 12))
+        ax.imshow(img)
+        ax.axis("off")
+
+        # UT = jaune
+        if affichage_points in ("UT uniquement", "UT + CIS"):
+            for _, r in agg_ut_ok.iterrows():
+                x = float(r["x_norm"]) * W
+                y = float(r["y_norm"]) * H
+                dx = float(r.get("offset_x", 0))
+                dy = float(r.get("offset_y", 0))
+                ax.plot(
+                    x,
+                    y,
+                    "o",
+                    markersize=ms,
+                    color="yellow",
+                    markeredgecolor="black",
+                    markeredgewidth=1.2,
+                )
+                if show_labels:
+                    label = f"{r['ut_norm']}\n{int(r['effectif'])} pers"
+                    if show_imc and pd.notna(r["imc_moyen"]):
+                        label += f"\nIMC {r['imc_moyen']:.1f}"
+                    ax.text(
+                        x + dx,
+                        y + dy,
+                        label,
+                        fontsize=fs,
+                        color="black",
+                        ha="center",
+                        va="center",
+                        bbox=dict(
+                            facecolor="white",
+                            alpha=0.75,
+                            edgecolor="none",
+                            boxstyle="round,pad=0.2",
+                        ),
+                    )
+
+        # CIS = rouge
+        if affichage_points in ("CIS uniquement", "UT + CIS"):
+            for _, r in agg_cis_ok.iterrows():
+                x = float(r["x_norm"]) * W
+                y = float(r["y_norm"]) * H
+                dx = float(r.get("offset_x", 0))
+                dy = float(r.get("offset_y", 0))
+                ax.plot(
+                    x,
+                    y,
+                    "o",
+                    markersize=ms,
+                    color="red",
+                    markeredgecolor="white",
+                    markeredgewidth=1.2,
+                )
+                if show_labels:
+                    label = f"{r['cis_norm']}\n{int(r['effectif'])} pers"
+                    if show_imc and pd.notna(r["imc_moyen"]):
+                        label += f"\nIMC {r['imc_moyen']:.1f}"
+                    ax.text(
+                        x + dx,
+                        y + dy,
+                        label,
+                        fontsize=fs,
+                        color="white",
+                        ha="center",
+                        va="center",
+                        bbox=dict(
+                            facecolor="black",
+                            alpha=0.75,
+                            edgecolor="none",
+                            boxstyle="round,pad=0.2",
+                        ),
+                    )
+
+        st.pyplot(fig, use_container_width=True)
+
+        # Infos si des clés manquent dans les référentiels
+        ut_missing = sorted(
+            set(df_ut["ut_norm"].unique()) - set(ref_ut["key_norm"].dropna().unique())
+        )
+        cis_missing = sorted(
+            set(df_cis["cis_norm"].unique())
+            - set(ref_cis["key_norm"].dropna().unique())
+        )
+        if ut_missing:
+            st.warning(
+                f"UT sans coordonnées dans ut.csv : {len(ut_missing)} — ex: {ut_missing[:5]}"
+            )
+        if cis_missing:
+            st.warning(
+                f"CIS sans coordonnées dans cis.csv : {len(cis_missing)} — ex: {cis_missing[:5]}"
+            )
