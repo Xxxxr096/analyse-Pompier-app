@@ -82,6 +82,74 @@ df = load_data()
 df.columns = df.columns.str.strip().str.lower()
 
 
+# 🔹 1) Après avoir standardisé les colonnes (df.columns = df.columns.str.strip().str.lower())
+#     on prépare la colonne 'classe_fpt' à partir de 'grade'
+def _normalize_txt(s: str) -> str:
+    if pd.isna(s):
+        return ""
+    return (
+        unicodedata.normalize("NFKD", str(s))
+        .encode("ascii", "ignore")
+        .decode("ascii")
+        .upper()
+        .strip()
+        .replace("-", " ")
+    )
+
+
+def grade_to_classe_fpt(grade: str) -> str:
+    g = _normalize_txt(grade)
+
+    # Catégorie C : H. du rang + sous-officiers
+    if any(
+        k in g
+        for k in [
+            "SAPEUR",
+            "1ERE CLASSE",
+            "1ERECLASSE",
+            "2EME CLASSE",
+            "2EMECLASSE",
+            "CAPORAL",
+            "CAPORAL CHEF",
+            "SERGENT",
+            "SERGENT CHEF",
+            "ADJUDANT",
+            "ADJUDANT CHEF",
+        ]
+    ):
+        return "C"
+
+    # Catégorie B : officiers subalternes
+    if any(k in g for k in ["LIEUTENANT", "CAPITAINE"]):
+        return "B"
+
+    # Catégorie A : officiers supérieurs & direction, SSSM officiers, etc.
+    if any(
+        k in g
+        for k in [
+            "COMMANDANT",
+            "LT COLONEL",
+            "LIEUTENANT COLONEL",
+            "COLONEL",
+            "CONTROLEUR",
+            "MEDECIN",
+            "PHARMACIEN",
+            "VETERINAIRE",
+            "INGENIEUR",
+            "DIRECTEUR",
+        ]
+    ):
+        return "A"
+
+    return "Inconnu"
+
+
+# Crée la colonne même si 'grade' n'existe pas (sécurisé)
+if "grade" in df.columns:
+    df["classe_fpt"] = df["grade"].apply(grade_to_classe_fpt)
+else:
+    df["classe_fpt"] = "Inconnu"
+
 # Ajoute dans le chargement si ce n’est pas fait :
 if "périmètre abdominal" in df.columns:
     df["périmètre abdominal"] = (
@@ -268,6 +336,13 @@ if "tension artérielle systol" in df.columns:
         ),
     )
 
+st.sidebar.markdown("**Classe de grade (FPT A/B/C)**")
+classes_disponibles = ["A", "B", "C", "Inconnu"]
+classes_choisies = st.sidebar.multiselect(
+    "Classe FPT :", options=classes_disponibles, default=classes_disponibles
+)
+
+
 # Slider pour tension artérielle diastolique
 if "tension artérielle diastol" in df.columns:
     st.sidebar.markdown("**Tension Artérielle Diastolique (mmHg)**")
@@ -349,7 +424,6 @@ df_filtered = df_filtered[
     & (df_filtered["vo2max"].fillna(0) <= vo2_max)
 ]
 
-# ✅ Corrigé ici : filtrage VO2max_Léger avec les bonnes valeurs
 df_filtered = df_filtered[
     (df_filtered["vo2max_leger"].fillna(0) >= vo2l_min)
     & (df_filtered["vo2max_leger"].fillna(0) <= vo2l_max)
@@ -396,6 +470,12 @@ if "tension artérielle systol" in df_filtered.columns:
         (df_filtered["tension artérielle systol"] >= sys_min)
         & (df_filtered["tension artérielle systol"] <= sys_max)
     ]
+
+if "classe_fpt" not in df.columns and "grade" in df.columns:
+    df["classe_fpt"] = df["grade"].apply(grade_to_classe_fpt)
+
+if "classe_fpt" in df.columns and classes_choisies:
+    df_filtered = df_filtered[df_filtered["classe_fpt"].isin(classes_choisies)]
 
 if "tension artérielle diastol" in df_filtered.columns:
     df_filtered = df_filtered[
