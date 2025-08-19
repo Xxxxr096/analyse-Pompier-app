@@ -6,25 +6,46 @@ import numpy as np
 import os
 import matplotlib.image as mpimg
 import unicodedata
+import csv
 
 
 # --- Chargement des données ---
 @st.cache_data()
 def load_data():
     data_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "spv2024.csv")
+        os.path.join(os.path.dirname(__file__), "..", "spv2024_final.csv")
     )
 
-    df = pd.read_csv(data_path, dtype={"matricule": str})
+    # Option 1 (auto-détection du séparateur) :
+    df = pd.read_csv(
+        data_path,
+        dtype={"matricule": "string"},
+        engine="python",  # nécessaire pour sep=None
+        sep=None,  # sniff le délimiteur ("," ";" "\t" …)
+        decimal=",",  # virgules décimales -> float
+        quoting=csv.QUOTE_MINIMAL,
+        skipinitialspace=True,
+    )
 
-    # Nettoyage des matricules (ex: supprimer les .0 si fichier mal encodé)
+    # Option 2 (si tu sais que c'est bien un ';') :
+    # df = pd.read_csv(
+    #     data_path, dtype={"matricule": "string"},
+    #     sep=";", decimal=",", engine="python",
+    #     quoting=csv.QUOTE_MINIMAL, skipinitialspace=True
+    # )
+
+    # Standardisations
     if "matricule" in df.columns:
-        df["matricule"] = df["matricule"].str.replace(".0", "", regex=False).str.strip()
+        df["matricule"] = (
+            df["matricule"]
+            .astype("string")
+            .str.replace(".0", "", regex=False)
+            .str.strip()
+        )
 
-    # Standardiser les noms de colonnes : minuscules, sans espace
     df.columns = df.columns.str.strip().str.lower()
 
-    # Colonnes à convertir de 'xx,yy' → float
+    # Si tu utilises decimal=",", tu peux enlever les remplacements ","->"."
     cols_to_fix = [
         "poids",
         "taille",
@@ -35,7 +56,7 @@ def load_data():
     ]
     for col in cols_to_fix:
         if col in df.columns:
-            df[col] = df[col].astype(str).str.replace(",", ".").astype(float)
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
     return df
 
@@ -1107,6 +1128,144 @@ if colonnes_a_surveiller:
 else:
     st.info("Veuillez sélectionner au moins un test à surveiller.")
 
+# ========= VISU DIRECTE : Durée d'engagement GARDE vs INTER =========
+# ========= VISU DIRECTE : Durée d'engagement GARDE vs INTER =========
+import re
+
+st.header("Durée d'engagement — Garde vs Intervention (en heures, sans filtrage)")
+
+# 1) Détection tolérante des colonnes
+COL_GARDE_CAND = [
+    "durée engagement garde",
+    "duree engagement garde",
+    "duree_garde",
+    "duree garde",
+    "duree engag garde",
+    "duree en garde",
+]
+COL_INTER_CAND = [
+    "durée engagement inter",
+    "duree engagement inter",
+    "duree_inter",
+    "duree intervention",
+    "duree engag inter",
+    "duree en inter",
+]
+
+
+def _norm(x: str) -> str:
+    s = unicodedata.normalize("NFKD", str(x)).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"\s+", " ", s).lower().replace("_", " ").strip()
+
+
+def pick_column(df, candidates):
+    normmap = {_norm(c): c for c in df.columns}
+    for cand in candidates:
+        key = _norm(cand)
+        if key in normmap:
+            return normmap[key]
+        for k, orig in normmap.items():
+            if all(tok in k for tok in key.split()):
+                return orig
+    return None
+
+
+col_garde = pick_column(df, COL_GARDE_CAND)
+col_inter = pick_column(df, COL_INTER_CAND)
+
+if not col_garde or not col_inter:
+    st.warning("Colonnes non détectées automatiquement. Sélectionne-les ci-dessous.")
+    col_garde = st.selectbox("Colonne 'garde' :", options=df.columns)
+    col_inter = st.selectbox("Colonne 'inter' :", options=df.columns)
+
+st.caption(
+    f"Colonnes utilisées : **{col_garde}** et **{col_inter}** (brut, sans filtre)"
+)
+
+
+# 2) Conversion en heures
+def to_hours(series):
+    td = pd.to_timedelta(series, errors="coerce")
+    hrs = td.dt.total_seconds() / 3600
+    return hrs
+
+
+garde_h = to_hours(df[col_garde])
+inter_h = to_hours(df[col_inter])
+
+sub = pd.DataFrame({"duree_garde_h": garde_h, "duree_inter_h": inter_h}).dropna()
+
+# 3) Diagnostics
+
+
+if sub.empty:
+    st.error("Aucune donnée exploitable après conversion des durées.")
+    st.dataframe(df[[col_garde, col_inter]].head(10))
+else:
+    # 4) Corrélations
+    pearson = sub["duree_garde_h"].corr(sub["duree_inter_h"], method="pearson")
+    spearman = sub["duree_garde_h"].corr(sub["duree_inter_h"], method="spearman")
+    st.markdown(
+        f"**Corrélation Pearson :** {pearson:.2f} — **Spearman :** {spearman:.2f}"
+    )
+
+    # 5) Scatter + droite de régression
+    st.subheader("Nuage de points + droite de tendance")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.scatterplot(data=sub, x="duree_garde_h", y="duree_inter_h", alpha=0.5)
+    sns.regplot(
+        data=sub,
+        x="duree_garde_h",
+        y="duree_inter_h",
+        scatter=False,
+        color="red",
+        line_kws={"label": "Régression"},
+    )
+    ax.set_xlabel("Durée garde (heures)")
+    ax.set_ylabel("Durée intervention (heures)")
+    ax.legend()
+    st.pyplot(fig)
+
+    # 6) Densité (hexbin)
+    st.subheader("Carte de densité (hexbin)")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    hb = ax.hexbin(
+        sub["duree_garde_h"],
+        sub["duree_inter_h"],
+        gridsize=35,
+        cmap="viridis",
+        mincnt=1,
+    )
+    ax.set_xlabel("Durée garde (heures)")
+    ax.set_ylabel("Durée intervention (heures)")
+    fig.colorbar(hb, ax=ax, label="Comptes")
+    st.pyplot(fig)
+
+    # 7) Distributions
+    st.subheader("Distributions")
+    c1, c2 = st.columns(2)
+    with c1:
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.histplot(sub["duree_garde_h"], bins=30, kde=True)
+        ax.set_xlabel("Durée garde (heures)")
+        ax.set_title("Garde")
+        st.pyplot(fig)
+    with c2:
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.histplot(sub["duree_inter_h"], bins=30, kde=True)
+        ax.set_xlabel("Durée intervention (heures)")
+        ax.set_title("Intervention")
+        st.pyplot(fig)
+
+    # 8) Statistiques descriptives
+    st.subheader("Statistiques descriptives")
+    st.table(
+        sub.describe(percentiles=[0.25, 0.5, 0.75])
+        .T.loc[:, ["count", "mean", "std", "min", "25%", "50%", "75%", "max"]]
+        .round(1)
+        .rename(index={"duree_garde_h": "Garde (h)", "duree_inter_h": "Inter (h)"})
+    )
+
 
 st.markdown(
     """
@@ -1118,222 +1277,3 @@ st.markdown(
 - Visualisez clairement la répartition des niveaux de luc léger par unité ou compagnie
 """
 )
-IMAGE_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "carte_j.jpeg")
-)
-UT_REF_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ut.csv"))
-CIS_REF_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "cis.csv"))
-
-
-# Petites utilitaires locales (indépendantes du reste du script)
-def _normalise_series(s: pd.Series) -> pd.Series:
-    return (
-        s.astype(str)
-        .apply(
-            lambda x: unicodedata.normalize("NFKD", x)
-            .encode("ascii", "ignore")
-            .decode("ascii")
-        )
-        .str.upper()
-        .str.replace(r"\s+", " ", regex=True)
-        .str.replace("-", " ")
-        .str.strip()
-        .replace({"NAN": np.nan})
-    )
-
-
-def _load_reference(path: str, key_col: str) -> pd.DataFrame:
-    if not os.path.exists(path):
-        st.error(f"Référentiel manquant : {os.path.basename(path)}")
-        return pd.DataFrame(
-            columns=["key_norm", "x_norm", "y_norm", "offset_x", "offset_y", "label"]
-        )
-    ref = pd.read_csv(path, sep=";")
-    needed = {key_col, "x_norm", "y_norm"}
-    if not needed.issubset(set(ref.columns)):
-        st.error(
-            f"{os.path.basename(path)} doit contenir les colonnes : {key_col}, x_norm, y_norm (offset_x/offset_y optionnels)."
-        )
-        return pd.DataFrame(
-            columns=["key_norm", "x_norm", "y_norm", "offset_x", "offset_y", "label"]
-        )
-    ref["key_norm"] = _normalise_series(ref[key_col])
-    ref["label"] = ref[key_col]
-    for c in ("x_norm", "y_norm", "offset_x", "offset_y"):
-        if c not in ref.columns:
-            ref[c] = 0
-        ref[c] = pd.to_numeric(ref[c], errors="coerce").fillna(0.0)
-    return ref[["key_norm", "x_norm", "y_norm", "offset_x", "offset_y", "label"]]
-
-
-# 1) Normaliser les colonnes UT / CIS dans df_filtered (déjà construit plus haut)
-df_map = df_filtered.copy()
-df_map.columns = df_map.columns.str.strip().str.lower()
-
-col_ut = next(
-    (c for c in ["ut", "compagnie", "unite_territoriale"] if c in df_map.columns), None
-)
-col_cis = next(
-    (c for c in ["cis", "centre", "centre_cis", "nom_cis"] if c in df_map.columns), None
-)
-
-if not col_ut and not col_cis:
-    st.warning(
-        "Aucune colonne UT/Compagnie ni CIS trouvée dans les données — impossible d’afficher la carte."
-    )
-else:
-    if col_ut:
-        df_map["ut_norm"] = _normalise_series(df_map[col_ut])
-    else:
-        df_map["ut_norm"] = np.nan
-
-    if col_cis:
-        df_map["cis_norm"] = _normalise_series(df_map[col_cis])
-    else:
-        df_map["cis_norm"] = np.nan
-
-    # 2) Charger les référentiels (ut.csv et cis.csv)
-    ref_ut = _load_reference(UT_REF_PATH, "ut")
-    ref_cis = _load_reference(CIS_REF_PATH, "cis")
-
-    # 3) Joindre pour récupérer x_norm / y_norm
-    df_ut = df_map.dropna(subset=["ut_norm"]).merge(
-        ref_ut, left_on="ut_norm", right_on="key_norm", how="left"
-    )
-    df_cis = df_map.dropna(subset=["cis_norm"]).merge(
-        ref_cis, left_on="cis_norm", right_on="key_norm", how="left"
-    )
-
-    # 4) Agréger (effectif + IMC moyen si présent)
-    df_ut["imc"] = pd.to_numeric(df_ut.get("imc", np.nan), errors="coerce")
-    df_cis["imc"] = pd.to_numeric(df_cis.get("imc", np.nan), errors="coerce")
-
-    agg_ut = df_ut.groupby(
-        ["ut_norm", "x_norm", "y_norm", "offset_x", "offset_y"],
-        dropna=False,
-        as_index=False,
-    ).agg(effectif=("ut_norm", "count"), imc_moyen=("imc", "mean"))
-    agg_cis = df_cis.groupby(
-        ["cis_norm", "x_norm", "y_norm", "offset_x", "offset_y"],
-        dropna=False,
-        as_index=False,
-    ).agg(effectif=("cis_norm", "count"), imc_moyen=("imc", "mean"))
-
-    agg_ut_ok = agg_ut.dropna(subset=["x_norm", "y_norm"])
-    agg_cis_ok = agg_cis.dropna(subset=["x_norm", "y_norm"])
-    st.sidebar.markdown("**Affichage sur la carte**")
-    affichage_points = st.sidebar.radio(
-        "Sélectionnez les points à afficher :",
-        ("UT uniquement", "CIS uniquement", "UT + CIS"),
-        index=2,
-    )
-    # 5) Afficher la carte
-    st.subheader("🗺️ Carte — UT (jaune) et CIS (rouge)")
-    if not os.path.exists(IMAGE_PATH):
-        st.error(f"Image non trouvée : {IMAGE_PATH}")
-    else:
-        img = mpimg.imread(IMAGE_PATH)
-        H, W = img.shape[0], img.shape[1]
-
-        c1, c2 = st.columns([1, 1])
-        with c1:
-            ms = st.slider("Taille des points", 4, 20, 10)
-            fs = st.slider("Taille du texte", 6, 16, 9)
-        with c2:
-            show_labels = st.checkbox("Afficher les labels", True)
-            show_imc = st.checkbox("Afficher l'IMC moyen", False)
-
-        fig, ax = plt.subplots(figsize=(10, 12))
-        ax.imshow(img)
-        ax.axis("off")
-
-        # UT = jaune
-        if affichage_points in ("UT uniquement", "UT + CIS"):
-            for _, r in agg_ut_ok.iterrows():
-                x = float(r["x_norm"]) * W
-                y = float(r["y_norm"]) * H
-                dx = float(r.get("offset_x", 0))
-                dy = float(r.get("offset_y", 0))
-                ax.plot(
-                    x,
-                    y,
-                    "o",
-                    markersize=ms,
-                    color="yellow",
-                    markeredgecolor="black",
-                    markeredgewidth=1.2,
-                )
-                if show_labels:
-                    label = f"{r['ut_norm']}\n{int(r['effectif'])} pers"
-                    if show_imc and pd.notna(r["imc_moyen"]):
-                        label += f"\nIMC {r['imc_moyen']:.1f}"
-                    ax.text(
-                        x + dx,
-                        y + dy,
-                        label,
-                        fontsize=fs,
-                        color="black",
-                        ha="center",
-                        va="center",
-                        bbox=dict(
-                            facecolor="white",
-                            alpha=0.75,
-                            edgecolor="none",
-                            boxstyle="round,pad=0.2",
-                        ),
-                    )
-
-        # CIS = rouge
-        if affichage_points in ("CIS uniquement", "UT + CIS"):
-            for _, r in agg_cis_ok.iterrows():
-                x = float(r["x_norm"]) * W
-                y = float(r["y_norm"]) * H
-                dx = float(r.get("offset_x", 0))
-                dy = float(r.get("offset_y", 0))
-                ax.plot(
-                    x,
-                    y,
-                    "o",
-                    markersize=ms,
-                    color="red",
-                    markeredgecolor="white",
-                    markeredgewidth=1.2,
-                )
-                if show_labels:
-                    label = f"{r['cis_norm']}\n{int(r['effectif'])} pers"
-                    if show_imc and pd.notna(r["imc_moyen"]):
-                        label += f"\nIMC {r['imc_moyen']:.1f}"
-                    ax.text(
-                        x + dx,
-                        y + dy,
-                        label,
-                        fontsize=fs,
-                        color="white",
-                        ha="center",
-                        va="center",
-                        bbox=dict(
-                            facecolor="black",
-                            alpha=0.75,
-                            edgecolor="none",
-                            boxstyle="round,pad=0.2",
-                        ),
-                    )
-
-        st.pyplot(fig, use_container_width=True)
-
-        # Infos si des clés manquent dans les référentiels
-        ut_missing = sorted(
-            set(df_ut["ut_norm"].unique()) - set(ref_ut["key_norm"].dropna().unique())
-        )
-        cis_missing = sorted(
-            set(df_cis["cis_norm"].unique())
-            - set(ref_cis["key_norm"].dropna().unique())
-        )
-        if ut_missing:
-            st.warning(
-                f"UT sans coordonnées dans ut.csv : {len(ut_missing)} — ex: {ut_missing[:5]}"
-            )
-        if cis_missing:
-            st.warning(
-                f"CIS sans coordonnées dans cis.csv : {len(cis_missing)} — ex: {cis_missing[:5]}"
-            )
