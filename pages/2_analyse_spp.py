@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import os
-import matplotlib.image as mpimg
 import unicodedata
+import re
 
 st.set_page_config(page_title="Analyse SPP + Carte UT/CIS", layout="wide")
 
@@ -1078,7 +1078,6 @@ else:
         "Veuillez sélectionner au moins un test pour vérifier les résultats manquants."
     )
 
-import re
 
 st.header("Durée d'engagement — Garde vs Intervention (en heures, sans filtrage)")
 
