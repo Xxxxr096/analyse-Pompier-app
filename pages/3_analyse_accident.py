@@ -6,6 +6,7 @@ import os
 import matplotlib.image as mpimg
 from PIL import Image
 import numpy as np
+import unicodedata
 
 # Titre
 st.title("Analyse de l'accidentologie")
@@ -650,196 +651,272 @@ for siege, count in compte_zones.items():
 st.pyplot(fig_global)
 
 # --- 📌 Carte des blessures par territoire (compagnie) ---
-# --- 📌 Carte des blessures par territoire (compagnie) ---
 
 
-# --- Mapping CIS vers Compagnie ---
+# ✅ Lecture CSV robuste: essaie plusieurs encodages & séparateurs
+def read_csv_smart(path, prefer_sep=None, prefer_encoding="utf-8-sig"):
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Fichier introuvable: {path}")
+
+    # ordre d’essai: on met le séparateur préféré en tête
+    seps = []
+    if prefer_sep is not None:
+        seps.append(prefer_sep)
+    seps += [",", ";", "\t", "|", None]
+
+    encs = [prefer_encoding, "utf-8", "cp1252", "latin1"]
+    last_err = None
+    for enc in encs:
+        for sep in seps:
+            try:
+                df = pd.read_csv(path, sep=sep, encoding=enc, engine="python")
+                # si une seule colonne ET qu’elle contient des ';', on relit en forçant ';'
+                if df.shape[1] == 1 and any(";" in c for c in df.columns):
+                    df = pd.read_csv(path, sep=";", encoding=enc, engine="python")
+                if "Unnamed: 0" in df.columns:
+                    df = df.drop(columns=["Unnamed: 0"])
+                return df
+            except Exception as e:
+                last_err = e
+                continue
+    raise RuntimeError(
+        f"Impossible de lire {path} avec encodages={encs} seps={seps}. Dernière erreur: {last_err}"
+    )
 
 
-# --- Nettoyage et normalisation ---
-data["CIS"] = data["CIS"].astype(str).str.strip().str.upper()
-data["CIS normalisé"] = data["CIS"].map(cis_compagnie_mapping)
+# ✅ Normalisation forte (pour clés de jointure): enlève BOM/espaces, supprime accents, MAJUSCULE
+def normalize_key(series: pd.Series) -> pd.Series:
+    s = (
+        series.astype(str)
+        .str.replace("\ufeff", "", regex=False)
+        .str.replace("\xa0", " ", regex=False)
+        .str.strip()
+    )
+    s = s.apply(
+        lambda x: "".join(
+            ch
+            for ch in unicodedata.normalize("NFKD", x)
+            if not unicodedata.combining(ch)
+        )
+    )
+    return (
+        s.str.upper()
+        .str.replace(r"\s+", " ", regex=True)
+        .str.replace("-", " ")
+        .str.strip()
+        .replace({"NAN": np.nan})
+    )
 
 
-# Recalculer les blessures par CIS filtré
-blessures_par_cis = data["CIS"].value_counts()
-total_blessures = blessures_par_cis.sum()
-
-# Ratios dynamiques selon les filtres
-ratios_blessures = {
-    cis: (nb / total_blessures * 100 if total_blessures > 0 else 0)
-    for cis, nb in blessures_par_cis.items()
-}
+# ✅ Conversion "xx,yy" -> float
+def comma_float(s):
+    return pd.to_numeric(
+        pd.Series(s, dtype="object").astype(str).str.replace(",", ".", regex=False),
+        errors="coerce",
+    )
 
 
-coordonnees_territoires = {
-    "ALTECKENDORF": (0.5168, 0.4031),
-    "BALDENHEIM": (0.5106, 0.8452),
-    "BARR": (0.4351, 0.7152),
-    "BERGBIETEN": (0.4234, 0.5795),
-    "BETSCHDORF": (0.7433, 0.3089),
-    "BISCHHEIM": (0.6354, 0.5411),
-    "BISCHWILLER": (0.7073, 0.4134),
-    "BRUMATH": (0.6078, 0.4458),
-    "DAMBACH-LA-VILLE": (0.4170, 0.7821),
-    "DOSSENHEIM S/ZINSEL": (0.3346, 0.3912),
-    "DRULINGEN": (0.2038, 0.3511),
-    "DRUSENHEIM": (0.7816, 0.4182),
-    "DURRENBACH": (0.6354, 0.3111),
-    "EBERSHEIM": (0.4744, 0.7963),
-    "EBERSMUNSTER": (0.5010, 0.8008),
-    "ERGERSHEIM": (0.4862, 0.5762),
-    "FEGERSHEIM": (0.6132, 0.6423),
-    "FINKWILLER": (0.6446, 0.5725),
-    "GAMBSHEIM": (0.7456, 0.4707),
-    "GEISPOLSHEIM": (0.5719, 0.6233),
-    "GRIES": (0.6828, 0.4285),
-    "GRIESHEIM-SUR-SOUFFE": (0.6293, 0.6239),
-    "HAGUENAU": (0.6522, 0.3755),
-    "HATTEN": (0.8183, 0.3100),
-    "HILSENHEIM": (0.5297, 0.8061),
-    "HOCHFELDEN": (0.4984, 0.4301),
-    "HOENHEIM": (0.6530, 0.5275),
-    "ILLKIRCH-GRAFFENSTAD": (0.6308, 0.6260),
-    "INGWILLER": (0.4266, 0.3439),
-    "LA SOUFFEL": (0.6105, 0.5325),
-    "LINGOLSHEIM": (0.5956, 0.5892),
-    "LIPSHEIM": (0.5826, 0.6466),
-    "MARCKOLSHEIM": (0.0, 0.0),
-    "MERTZWILLER": (0.0, 0.0),
-    "MITTELHAUSBERGEN": (0.0, 0.0),
-    "MOLSHEIM": (0.4693, 0.6152),
-    "MONSWILLER": (0.3591, 0.4415),
-    "MUNDOLSHEIM": (0.6163, 0.5221),
-    "MUSSIG": (0.4957, 0.8640),
-    "MUTTERSHOLTZ": (0.5010, 0.8272),
-    "MUTZIG": (0.4242, 0.6114),
-    "NIEDERBRONN LES BAIN": (0.5458, 0.2781),
-    "NORDHOUSE": (0.5941, 0.6758),
-    "OBERHOFFEN SUR MODER": (0.7333, 0.4009),
-    "STRASBOURG SUD": (0.6469, 0.6049),
-    "STRASBOURG OUEST": (0.6293, 0.5627),
-    "STRASBOURG NORD": (0.6614, 0.5438),
-}
-
-## --- Chargement de l'image ---
-image_path = os.path.abspath(
+IMAGE_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "carte_j.jpeg")
 )
-img = Image.open(image_path)
-img_width, img_height = img.size
-# --- Construction des points ---
-data_points = []
+UT_REF_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ut.csv"))
+CIS_REF_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "cis.csv"))
 
-for cis, (x_norm, y_norm) in coordonnees_territoires.items():
-    if cis not in blessures_par_cis:
-        continue  # Ignorer les CIS non présents dans les données filtrées
+# ✅ normalisation déjà définie: normalize_key
 
-    x_px = x_norm * img_width
-    y_px = y_norm * img_height
-    bls = blessures_par_cis.get(cis, 0)
-    ratio = ratios_blessures.get(cis, 0)
 
-    data_points.append(
-        {
-            "CIS": cis,
-            "x": x_px,
-            "y": y_px,
-            "Blessures": bls,
-            "Ratio": ratio,
-        }
+# ✅ Utilitaires référentiels avec lecture robuste et messages clairs
+def _load_reference(path: str, key_col: str) -> pd.DataFrame:
+    if not os.path.exists(path):
+        st.error(f"Référentiel manquant : {os.path.basename(path)}")
+        return pd.DataFrame(
+            columns=["key_norm", "x_norm", "y_norm", "offset_x", "offset_y", "label"]
+        )
+
+    # Lecture robuste (ne force plus sep=';')
+    ref = read_csv_smart(path)
+
+    # Harmonise colonnes en minuscules, trim
+    ref.columns = ref.columns.str.strip()
+
+    needed = {key_col, "x_norm", "y_norm"}
+    if not needed.issubset(set(ref.columns)):
+        st.error(
+            f"{os.path.basename(path)} doit contenir les colonnes : {key_col}, x_norm, y_norm (offset_x/offset_y optionnels). "
+            f"Colonnes trouvées: {list(ref.columns)}"
+        )
+        return pd.DataFrame(
+            columns=["key_norm", "x_norm", "y_norm", "offset_x", "offset_y", "label"]
+        )
+
+    # Normalise la clé & garde label original
+    ref["key_norm"] = normalize_key(ref[key_col])
+    ref["label"] = ref[key_col]
+
+    # Types numériques
+    for c in ("x_norm", "y_norm", "offset_x", "offset_y"):
+        if c not in ref.columns:
+            ref[c] = 0
+        ref[c] = pd.to_numeric(ref[c], errors="coerce")
+
+    return ref[["key_norm", "x_norm", "y_norm", "offset_x", "offset_y", "label"]]
+
+
+# --- Carte des blessures par territoire (UT / CIS) ---
+st.subheader("🗺️ Carte des blessures")
+
+df_map = data.copy()
+df_map.columns = df_map.columns.str.strip().str.lower()
+
+# Identifier colonnes UT / CIS
+col_ut = next(
+    (c for c in ["ut", "compagnie", "unite_territoriale"] if c in df_map.columns), None
+)
+col_cis = next(
+    (c for c in ["cis", "centre", "centre_cis", "nom_cis"] if c in df_map.columns), None
+)
+
+if not col_ut and not col_cis:
+    st.warning(
+        "⚠️ Aucune colonne UT/Compagnie ni CIS trouvée dans les données — impossible d’afficher la carte."
+    )
+else:
+    if col_ut:
+        df_map["ut_norm"] = normalize_key(df_map[col_ut])
+    else:
+        df_map["ut_norm"] = np.nan
+
+    if col_cis:
+        df_map["cis_norm"] = normalize_key(df_map[col_cis])
+    else:
+        df_map["cis_norm"] = np.nan
+
+    # Charger les référentiels
+    ref_ut = _load_reference(UT_REF_PATH, "ut")
+    ref_cis = _load_reference(CIS_REF_PATH, "cis")
+
+    # Agrégation blessures par UT et CIS
+    agg_ut = (
+        df_map.dropna(subset=["ut_norm"])
+        .groupby("ut_norm", as_index=False)
+        .agg(nb_blessures=("ut_norm", "count"))
+        .merge(ref_ut, left_on="ut_norm", right_on="key_norm", how="left")
     )
 
-
-offsets = {
-    "ALTECKENDORF": (0, 3),
-    "BALDENHEIM": (0, 5),
-    "BARR": (0, -3),
-    "BERGBIETEN": (0, -2),
-    "BETSCHDORF": (0, -9),
-    "BISCHHEIM": (20, -10),
-    "BISCHWILLER": (0, -1),
-    "BRUMATH": (10, 10),
-    "DAMBACH-LA-VILLE": (0, 9),
-    "DOSSENHEIM S/ZINSEL": (0, 4),
-    "DRULINGEN": (0, 0),
-    "DRUSENHEIM": (0, 2),
-    "DURRENBACH": (0, 7),
-    "EBERSHEIM": (0, -8),
-    "EBERSMUNSTER": (0, 8),
-    "ERGERSHEIM": (0, -6),
-    "FEGERSHEIM": (10, -10),
-    "FINKWILLER": (-25, 10),
-    "GAMBSHEIM": (0, -2),
-    "GEISPOLSHEIM": (15, 15),
-    "GRIES": (-15, 10),
-    "GRIESHEIM-SUR-SOUFFE": (10, 10),
-    "HAGUENAU": (0, 3),
-    "HATTEN": (0, -7),
-    "HILSENHEIM": (0, -3),
-    "HOCHFELDEN": (0, -10),
-    "HOENHEIM": (-20, 15),
-    "ILLKIRCH-GRAFFENSTAD": (20, 20),
-    "INGWILLER": (0, 3),
-    "LA SOUFFEL": (0, 1),
-    "LINGOLSHEIM": (-20, -10),
-    "LIPSHEIM": (0, 8),
-    "MOLSHEIM": (-15, -20),
-    "MONSWILLER": (0, 5),
-    "MUNDOLSHEIM": (10, -20),
-    "MUSSIG": (0, 7),
-    "MUTTERSHOLTZ": (0, -3),
-    "MUTZIG": (0, 5),
-    "NIEDERBRONN LES BAIN": (0, 7),
-    "NORDHOUSE": (0, 4),
-    "OBERHOFFEN SUR MODER": (0, -8),
-    "STRASBOURG SUD": (0, 25),
-    "STRASBOURG OUEST": (-20, 10),
-    "STRASBOURG NORD": (0, -25),
-}
-
-
-# --- 📌 Carte des blessures par territoire (matplotlib) ---
-
-st.subheader("🗺️ Carte des blessures par territoire (avec effectif et ratio %)")
-
-# Création du graphique matplotlib
-fig_map, ax_map = plt.subplots(figsize=(10, 12))
-ax_map.imshow(img)
-ax_map.axis("off")
-
-# Affichage des points avec annotations
-for point in data_points:
-    x = point["x"]
-    y = point["y"]
-    y_offset = np.random.randint(-15, 15)  # Décalage aléatoire pour éparpiller
-
-    ax_map.plot(x, y, "ro", markersize=6)
-
-    annotation = f"{point['CIS']}\n{point['Blessures']} blessés\n{point['Ratio']:.1f}%"
-
-    offset = offsets.get(point["CIS"], (0, np.random.randint(-15, 15)))
-    x_offset, y_offset = offset
-
-    ax_map.text(
-        x + x_offset,
-        y + y_offset,
-        annotation,
-        fontsize=6,
-        color="white",
-        ha="center",
-        va="center",
-        bbox=dict(
-            facecolor="black",
-            alpha=0.7,
-            edgecolor="none",
-            boxstyle="round,pad=0.2",
-        ),
+    agg_cis = (
+        df_map.dropna(subset=["cis_norm"])
+        .groupby("cis_norm", as_index=False)
+        .agg(nb_blessures=("cis_norm", "count"))
+        .merge(ref_cis, left_on="cis_norm", right_on="key_norm", how="left")
     )
 
-if not data_points:
-    st.warning("Aucun CIS avec des données pour ces filtres.")
-    st.stop()
+    agg_ut_ok = agg_ut.dropna(subset=["x_norm", "y_norm"])
+    agg_cis_ok = agg_cis.dropna(subset=["x_norm", "y_norm"])
 
-# Affichage de la figure dans Streamlit
-st.pyplot(fig_map)
+    # Sélecteur d’affichage
+    st.sidebar.markdown("**Affichage sur la carte**")
+    affichage_points = st.sidebar.radio(
+        "Sélectionnez les points à afficher :",
+        ("UT uniquement", "CIS uniquement", "UT + CIS"),
+        index=2,
+    )
+
+    # Image de fond
+    if not os.path.exists(IMAGE_PATH):
+        st.error(f"Image non trouvée : {IMAGE_PATH}")
+    else:
+        img = mpimg.imread(IMAGE_PATH)
+        H, W = img.shape[0], img.shape[1]
+
+        c1, c2 = st.columns([1, 1])
+        with c1:
+            ms = st.slider("Taille des points", 4, 20, 10)
+            fs = st.slider("Taille du texte", 6, 16, 9)
+        with c2:
+            show_labels = st.checkbox("Afficher les labels", True)
+
+        fig, ax = plt.subplots(figsize=(10, 12))
+        ax.imshow(img)
+        ax.axis("off")
+
+        # --- UT = Jaune ---
+        if affichage_points in ("UT uniquement", "UT + CIS"):
+            for _, r in agg_ut_ok.iterrows():
+                x = float(r["x_norm"]) * W
+                y = float(r["y_norm"]) * H
+                ax.plot(
+                    x,
+                    y,
+                    "o",
+                    markersize=ms,
+                    color="yellow",
+                    markeredgecolor="black",
+                    markeredgewidth=1.2,
+                )
+                if show_labels:
+                    label = f"{r['label']}\n{r['nb_blessures']} blessés"
+                    ax.text(
+                        x,
+                        y - 10,
+                        label,
+                        fontsize=fs,
+                        color="black",
+                        ha="center",
+                        va="center",
+                        bbox=dict(
+                            facecolor="white",
+                            alpha=0.75,
+                            edgecolor="none",
+                            boxstyle="round,pad=0.2",
+                        ),
+                    )
+
+        # --- CIS = Rouge ---
+        if affichage_points in ("CIS uniquement", "UT + CIS"):
+            for _, r in agg_cis_ok.iterrows():
+                x = float(r["x_norm"]) * W
+                y = float(r["y_norm"]) * H
+                ax.plot(
+                    x,
+                    y,
+                    "o",
+                    markersize=ms,
+                    color="red",
+                    markeredgecolor="white",
+                    markeredgewidth=1.2,
+                )
+                if show_labels:
+                    label = f"{r['label']}\n{r['nb_blessures']} blessés"
+                    ax.text(
+                        x,
+                        y - 10,
+                        label,
+                        fontsize=fs,
+                        color="white",
+                        ha="center",
+                        va="center",
+                        bbox=dict(
+                            facecolor="black",
+                            alpha=0.75,
+                            edgecolor="none",
+                            boxstyle="round,pad=0.2",
+                        ),
+                    )
+
+        st.pyplot(fig, use_container_width=True)
+
+        # 🔎 Diagnostics : clés manquantes dans le référentiel
+        ut_missing = sorted(
+            set(df_map["ut_norm"].dropna()) - set(ref_ut["key_norm"].dropna())
+        )
+        cis_missing = sorted(
+            set(df_map["cis_norm"].dropna()) - set(ref_cis["key_norm"].dropna())
+        )
+        if ut_missing:
+            st.warning(
+                f"UT sans coordonnées : {len(ut_missing)} — ex: {ut_missing[:5]}"
+            )
+        if cis_missing:
+            st.warning(
+                f"CIS sans coordonnées : {len(cis_missing)} — ex: {cis_missing[:5]}"
+            )
