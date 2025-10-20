@@ -9,7 +9,6 @@ import unicodedata
 
 # --- Chargement des données ---
 @st.cache_data()
-@st.cache_data()
 def load_data():
     data_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "cleannn.csv")

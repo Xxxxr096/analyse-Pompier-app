@@ -547,20 +547,35 @@ if luc_leger_categories:
         if cat == "0":
             filtres_luc.append(df_filtered["resul ll"] == 0)
         elif cat == "1":
-            filtres_luc.append(df_filtered["resul ll"] == 1)
+            filtres_luc.append(
+                (df_filtered["resul ll"] > 0) & (df_filtered["resul ll"] <= 1)
+            )
         elif cat == "2":
-            filtres_luc.append(df_filtered["resul ll"] == 2)
+            filtres_luc.append(
+                (df_filtered["resul ll"] > 1) & (df_filtered["resul ll"] <= 2)
+            )
         elif cat == "3":
-            filtres_luc.append(df_filtered["resul ll"] == 3)
+            filtres_luc.append(
+                (df_filtered["resul ll"] > 2) & (df_filtered["resul ll"] <= 3)
+            )
         elif cat == "4":
-            filtres_luc.append(df_filtered["resul ll"] == 4)
+            filtres_luc.append(
+                (df_filtered["resul ll"] > 3) & (df_filtered["resul ll"] <= 4)
+            )
         elif cat == "5":
-            filtres_luc.append(df_filtered["resul ll"] == 5)
+            filtres_luc.append(
+                (df_filtered["resul ll"] > 4) & (df_filtered["resul ll"] <= 5)
+            )
         elif cat == "plus de 6":
-            filtres_luc.append(df_filtered["resul ll"] >= 6)
+            filtres_luc.append(df_filtered["resul ll"] > 5)
 
     if filtres_luc:
-        df_filtered = df_filtered[pd.concat(filtres_luc, axis=1).any(axis=1)]
+        condition_finale = pd.concat(filtres_luc, axis=1).any(axis=1)
+        # Inclure les NaN si TOUT est coché :
+        if len(luc_leger_categories) == 7:
+            condition_finale = condition_finale | df_filtered["resul ll"].isna()
+        df_filtered = df_filtered[condition_finale]
+
 
 # --- VISUALISATIONS ---
 st.subheader("Statistiques Globales sur les Données Filtrées")

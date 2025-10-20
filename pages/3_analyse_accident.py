@@ -9,6 +9,7 @@ import numpy as np
 import unicodedata
 
 # Titre
+
 st.title("Analyse de l'accidentologie")
 
 
